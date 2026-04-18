@@ -685,27 +685,53 @@ function BossVendorPay({ fmtC, cfg, db }) {
 function BossInventory({ cfg, db }) {
   const [sv, setSv] = useState('');
   const [sp, setSp] = useState('');
-  const [branch, setBranch] = useState(cfg.branches[0] || 'IDIMU');
 
-  const branchInv = db.inventory[branch] || {};
+  // Aggregate across all branches per vendor/product
+  // Received = IDIMU only (stock comes in at IDIMU)
+  // Delivered = sum across all branches
+  function aggregate(vendor, product) {
+    const idimuEntry = db.inventory['IDIMU']?.[vendor]?.[product] || {};
+    const received = idimuEntry.received || 0;
+    const delivered = cfg.branches.reduce((s, b) => {
+      return s + (db.inventory[b]?.[vendor]?.[product]?.delivered || 0);
+    }, 0);
+    const remaining = received - delivered;
+    return { received, delivered, remaining };
+  }
+
+  // Collect all products per vendor across all branches
+  function vendorProducts(vendor) {
+    const seen = new Set();
+    cfg.branches.forEach(b => {
+      Object.keys(db.inventory[b]?.[vendor] || {}).forEach(p => seen.add(p));
+    });
+    return [...seen];
+  }
+
   const rows = cfg.vendors
     .filter(v => !sv || v.toLowerCase().includes(sv.toLowerCase()))
     .map(v => {
-      const items = branchInv[v] || {};
-      const filt = Object.entries(items).filter(([p]) => !sp || p.toLowerCase().includes(sp.toLowerCase()));
-      return { v, filt };
+      const prods = vendorProducts(v)
+        .filter(p => !sp || p.toLowerCase().includes(sp.toLowerCase()))
+        .map(p => ({ p, ...aggregate(v, p) }));
+      return { v, prods };
     })
-    .filter(({ filt, v }) => filt.length > 0 || (!sp && !sv));
+    .filter(({ prods }) => prods.length > 0);
+
+  const grandReceived  = rows.reduce((s, { prods }) => s + prods.reduce((a, r) => a + r.received, 0), 0);
+  const grandDelivered = rows.reduce((s, { prods }) => s + prods.reduce((a, r) => a + r.delivered, 0), 0);
+  const grandRemaining = grandReceived - grandDelivered;
 
   return (
     <div className="bv">
       <style>{CSS}</style>
-      <div className="pg-hd"><p className="pg-title">Inventory</p><p className="pg-sub">Stock position per branch, grouped by vendor</p></div>
+      <div className="pg-hd"><p className="pg-title">Inventory</p><p className="pg-sub">All vendors · received at IDIMU · delivered across all branches</p></div>
       <div className="pg-body">
-        <div className="bv-tabs">
-          {cfg.branches.map(b => (
-            <button key={b} className={`bv-tab${branch === b ? ' on' : ''}`} onClick={() => setBranch(b)}>{b}</button>
-          ))}
+
+        <div className="bv-kpis c3" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 16 }}>
+          <div className="bv-kpi blue"><div className="bv-kpi-l">Total Received</div><div className="bv-kpi-v">{grandReceived}</div><div className="bv-kpi-s">into IDIMU warehouse</div></div>
+          <div className="bv-kpi ok"><div className="bv-kpi-l">Total Delivered</div><div className="bv-kpi-v">{grandDelivered}</div><div className="bv-kpi-s">across all branches</div></div>
+          <div className={`bv-kpi ${grandRemaining <= 0 ? 'bad' : ''}`}><div className="bv-kpi-l">Total Remaining</div><div className="bv-kpi-v">{grandRemaining}</div><div className="bv-kpi-s">{grandRemaining <= 0 ? 'out of stock' : 'in stock'}</div></div>
         </div>
 
         <div className="bv-search-row">
@@ -720,40 +746,76 @@ function BossInventory({ cfg, db }) {
         </div>
 
         {rows.length === 0
-          ? <div className="bv-empty">No results for {branch}</div>
-          : rows.map(({ v, filt }) => (
+          ? <div className="bv-empty">No stock entries found</div>
+          : rows.map(({ v, prods }) => {
+            const vRec = prods.reduce((s, r) => s + r.received, 0);
+            const vDel = prods.reduce((s, r) => s + r.delivered, 0);
+            const vRem = vRec - vDel;
+            return (
             <div key={v} className="bv-vg">
-              <div className="bv-vg-head">{v}</div>
-              {filt.length === 0
-                ? <div className="bv-empty">No stock</div>
-                : <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none' }}>
-                    <table>
-                      <thead><tr><th>Product</th><th style={{ textAlign: 'right' }}>Received</th><th style={{ textAlign: 'right' }}>Sent Out</th><th style={{ textAlign: 'right' }}>Delivered</th><th style={{ textAlign: 'right' }}>Remaining</th><th>Status</th></tr></thead>
-                      <tbody>
-                        {filt.map(([p, d]) => {
-                          const rem = (d.received || 0) - (d.sentOut || 0) - (d.delivered || 0);
-                          return (
-                            <tr key={p}>
-                              <td style={{ fontWeight: 600 }}>{p}</td>
-                              <td style={{ textAlign: 'right' }} className="bv-mono">{d.received || 0}</td>
-                              <td style={{ textAlign: 'right' }}><Money tone="warn">{d.sentOut || 0}</Money></td>
-                              <td style={{ textAlign: 'right' }}><Money tone="ok">{d.delivered || 0}</Money></td>
-                              <td style={{ textAlign: 'right' }}><Money tone={rem <= 0 ? 'bad' : ''}>{rem}</Money></td>
-                              <td>
-                                {rem <= 0 ? <Pill type="r">Out</Pill>
-                                  : rem <= 5 ? <Pill type="a">Low</Pill>
-                                  : <Pill type="g">In Stock</Pill>}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-              }
+              <div className="bv-vg-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{v}</span>
+                <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: vRem <= 0 ? '#e0425a' : '#1fa67a' }}>
+                  {vRec} in · {vDel} out · {vRem} left
+                </span>
+              </div>
+              <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none' }}>
+                <table>
+                  <thead><tr>
+                    <th>Product</th>
+                    <th style={{ textAlign: 'right' }}>Received (IDIMU)</th>
+                    <th style={{ textAlign: 'right' }}>Delivered (all)</th>
+                    <th style={{ textAlign: 'right' }}>Remaining</th>
+                    <th>Status</th>
+                  </tr></thead>
+                  <tbody>
+                    {prods.map(({ p, received, delivered, remaining }) => (
+                      <tr key={p}>
+                        <td style={{ fontWeight: 600 }}>{p}</td>
+                        <td style={{ textAlign: 'right' }} className="bv-mono">{received}</td>
+                        <td style={{ textAlign: 'right' }}><Money tone="ok">{delivered}</Money></td>
+                        <td style={{ textAlign: 'right' }}><Money tone={remaining <= 0 ? 'bad' : ''}>{remaining}</Money></td>
+                        <td>
+                          {remaining <= 0 ? <Pill type="r">Out</Pill>
+                            : remaining <= 5 ? <Pill type="a">Low</Pill>
+                            : <Pill type="g">In Stock</Pill>}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr style={{ background: '#f6f7fb', borderTop: '2px solid #eef0f7' }}>
+                      <td style={{ fontWeight: 700, color: '#5b6385', fontSize: 12 }}>SUBTOTAL</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }} className="bv-mono">{vRec}</td>
+                      <td style={{ textAlign: 'right' }}><Money tone="ok">{vDel}</Money></td>
+                      <td style={{ textAlign: 'right' }}><Money tone={vRem <= 0 ? 'bad' : ''}>{vRem}</Money></td>
+                      <td></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-          ))
+            );
+          })
         }
+
+        {rows.length > 0 && (
+          <div className="bv-rowcard" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0b1230' }}>
+            <span style={{ fontWeight: 700, fontSize: 13, color: '#fff', letterSpacing: '.06em', textTransform: 'uppercase' }}>Grand Total</span>
+            <div style={{ display: 'flex', gap: 28 }}>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#858cab', letterSpacing: '.1em', textTransform: 'uppercase' }}>Received</div>
+                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 18, color: '#93c5fd', marginTop: 2 }}>{grandReceived}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#858cab', letterSpacing: '.1em', textTransform: 'uppercase' }}>Delivered</div>
+                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 18, color: '#6ee7b7', marginTop: 2 }}>{grandDelivered}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#858cab', letterSpacing: '.1em', textTransform: 'uppercase' }}>Remaining</div>
+                <div style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, fontSize: 18, color: grandRemaining <= 0 ? '#fca5a5' : '#fff', marginTop: 2 }}>{grandRemaining}</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
