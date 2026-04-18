@@ -198,7 +198,7 @@ export default function BossViews({ tabId }) {
   if (tabId === 'orders')      return <BossOrders       filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'riders')      return <BossRiders       fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'remittances') return <BossRemittances  filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
-  if (tabId === 'vendor-pay')  return <BossVendorPay    fmtC={fmtC} cfg={cfg} db={db} />;
+  if (tabId === 'vendor-pay')  return <BossVendorPay    filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'inventory')   return <BossInventory    cfg={cfg} db={db} />;
   if (tabId === 'tools')       return <BossTools        setActiveTab={setActiveTab} cfg={cfg} />;
   if (tabId === 'dfees')       return <BossDeliveryFees fmtC={fmtC} cfg={cfg} db={db} setActiveTab={setActiveTab} />;
@@ -540,12 +540,12 @@ function BossRemittances({ filterP, fmtC, cfg, db }) {
 
 // ─── Vendor Payments ──────────────────────────────────────────────────────────
 
-function BossVendorPay({ fmtC, cfg, db }) {
+function BossVendorPay({ filterP, fmtC, cfg, db }) {
   const { setDb, vpSelected, setVpSelected } = useApp();
   const [payFields, setPayFields] = useState({ amount: '', date: TODAY, bank: '', account: '', accountName: '', txID: '' });
 
   function vendorCalc(vn) {
-    const vOrds = db.orders.filter(o => gp(o).some(p => p.vendor === vn) && (REVENUE_STATUSES.includes(o.status) || o.status === 'Failed' || o.status === 'Replaced'));
+    const vOrds = filterP(db.orders.filter(o => gp(o).some(p => p.vendor === vn) && (REVENUE_STATUSES.includes(o.status) || o.status === 'Failed' || o.status === 'Replaced')));
     const del = vOrds.filter(o => REVENUE_STATUSES.includes(o.status));
     function vt(o) { return gp(o).filter(p => p.vendor === vn).reduce((s, p) => s + (Number(p.price) || 0), 0); }
     const totalVal = del.reduce((s, o) => s + vt(o), 0);
@@ -592,6 +592,7 @@ function BossVendorPay({ fmtC, cfg, db }) {
       <style>{CSS}</style>
       <div className="pg-hd"><p className="pg-title">Vendor Payments</p><p className="pg-sub">Select a vendor to see breakdown & log a payment</p></div>
       <div className="pg-body">
+        <DateFilter />
         <div className="bv-kpis c3" style={{ marginBottom: 16 }}>
           <div className="bv-kpi"><div className="bv-kpi-l">Total Payable</div><div className="bv-kpi-v">{fmtC(totalPayable)}</div></div>
           <div className="bv-kpi ok"><div className="bv-kpi-l">Paid</div><div className="bv-kpi-v">{fmtC(totalPaid)}</div></div>
