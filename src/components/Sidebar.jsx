@@ -2,7 +2,7 @@ import { useApp } from '../context/AppContext';
 import { getTabs, ICONS } from '../utils/helpers';
 import { LogoSvg } from './LoginScreen';
 
-export default function Sidebar() {
+export default function Sidebar({ sidebarOpen, onClose }) {
   const { cfg, db, session, setSession, activeTab, setActiveTab } = useApp();
 
   if (!session) return null;
@@ -20,13 +20,16 @@ export default function Sidebar() {
     : session.role === 'vendor' ? session.vendorName : session.role;
 
   return (
-    <div id="sidebar">
+    <div id="sidebar" className={sidebarOpen ? 'sb-open' : ''}>
       <div id="sb-head">
-        <div className="sb-logo">
-          <div className="sb-logo-mark">
-            <LogoSvg size={16} />
+        <div className="sb-logo" style={{ justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="sb-logo-mark">
+              <LogoSvg size={20} color="white" />
+            </div>
+            <span className="sb-logo-name">{cfg.company}</span>
           </div>
-          <span className="sb-logo-name">{cfg.company}</span>
+          <button className="sb-close" onClick={onClose} title="Close menu">✕</button>
         </div>
         <div className="sb-ctx">
           <div className="sb-ctx-dot" style={{ background: dotColor }} />
@@ -44,7 +47,7 @@ export default function Sidebar() {
               <button
                 key={t.id}
                 className={`sb-item${activeTab === t.id ? ' active' : ''}`}
-                onClick={() => setActiveTab(t.id)}
+                onClick={() => { setActiveTab(t.id); onClose?.(); }}
               >
                 {ICONS[t.id] && <span className="ico">{ICONS[t.id]}</span>}
                 <span>{t.l}</span>

@@ -3,6 +3,8 @@ export const TODAY = (() => {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 })();
 
+export const REVENUE_STATUSES = ['Delivered', 'Completed'];
+
 export function fmt(n, currency = '₦') {
   return currency + Number(n || 0).toLocaleString();
 }
@@ -22,7 +24,12 @@ export function gp(o) {
 }
 
 export function ot(o) {
-  return gp(o).reduce((s, p) => s + (Number(p.price) || 0) * (Number(p.qty) || 1), 0);
+  if (o.paidAmount !== undefined && o.paidAmount !== null) return Number(o.paidAmount);
+  return gp(o).reduce((s, p) => s + (Number(p.price) || 0), 0);
+}
+
+export function otFull(o) {
+  return gp(o).reduce((s, p) => s + (Number(p.price) || 0), 0);
 }
 
 export function bonusRate(n, name, cfg) {
@@ -41,7 +48,7 @@ export function getBonusCycleOrders(rider, db) {
   const cycleStart = new Date(now.getFullYear(), now.getMonth() + (d < 14 ? -1 : 0), 14);
   const cycleEnd = new Date(cycleStart.getFullYear(), cycleStart.getMonth() + 1, 15);
   return db.orders.filter(o =>
-    o.rider === rider && o.status === 'Delivered' &&
+    o.rider === rider && REVENUE_STATUSES.includes(o.status) &&
     new Date(o.date) >= cycleStart && new Date(o.date) <= cycleEnd
   );
 }
@@ -80,16 +87,22 @@ export function filterPeriod(list, period, rangeFrom, rangeTo) {
 }
 
 export function buildUsers(cfg) {
-  const u = [{ username: 'boss', password: 'boss@2025', role: 'boss', branch: null, display: 'Boss / CEO' }];
+  const creds = cfg.credentials || {};
+  const u = [{
+    username: 'boss',
+    password: creds.boss ?? 'boss@2025',
+    role: 'boss', branch: null, display: 'Boss / CEO',
+  }];
   cfg.branches.forEach(b => {
     const bl = b.toLowerCase();
-    u.push({ username: `${bl}_manager`, password: `${bl}mgr2025`, role: 'manager', branch: b, display: `${b} Manager` });
-    u.push({ username: `${bl}_rider`, password: `${bl}rider2025`, role: 'rider-manager', branch: b, display: `${b} Rider Mgr` });
-    u.push({ username: `${bl}_inv`, password: `${bl}inv2025`, role: 'inventory', branch: b, display: `${b} Inventory` });
+    u.push({ username: `${bl}_manager`, password: creds[`manager-${b}`] ?? `${bl}mgr2025`, role: 'manager', branch: b, display: `${b} Manager` });
+    u.push({ username: `${bl}_rider`, password: creds[`rider-${b}`] ?? `${bl}rider2025`, role: 'rider-manager', branch: b, display: `${b} Rider Mgr` });
+    u.push({ username: `${bl}_inv`, password: creds[`inventory-${b}`] ?? `${bl}inv2025`, role: 'inventory', branch: b, display: `${b} Inventory` });
   });
+  u.push({ username: 'inv_admin', password: creds['inventory-admin'] ?? 'invaadmin2025', role: 'inventory-admin', branch: null, display: 'Inventory Admin' });
   cfg.vendors.forEach(v => {
     const vl = v.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-    u.push({ username: `vendor_${vl}`, password: 'vendor_2025', role: 'vendor', vendorName: v, display: v });
+    u.push({ username: `vendor_${vl}`, password: creds[`vendor-${v}`] ?? 'vendor_2025', role: 'vendor', vendorName: v, display: v });
   });
   return u;
 }
@@ -98,7 +111,7 @@ export const ICONS = {
   overview: '◈', branches: '⊞', orders: '≡', riders: '◎', remittances: '⇄',
   'vendor-pay': '⊕', inventory: '▦', tools: '⚙', remittance: '⇄', send: '↑',
   expenses: '⊟', log: '＋', assign: '↗', update: '✎', 'my-riders': '◎',
-  deliveries: '◉', invoice: '□', stock: '▦', 'waybill-in': '↓', 'waybill-out': '↑', transfer: '⇌',
+  deliveries: '◉', invoice: '□', stock: '▦', 'waybill-in': '↓', 'waybill-out': '↑', transfer: '⇌', 'inv-history': '◷',
 };
 
 export function getTabs(role) {
@@ -114,18 +127,23 @@ export function getTabs(role) {
     { id: 'log', l: 'Log Orders' }, { id: 'assign', l: 'Assign' }, { id: 'update', l: 'Update' }, { id: 'my-riders', l: 'My Riders' },
   ];
   if (role === 'vendor') return [{ id: 'deliveries', l: 'Deliveries' }, { id: 'invoice', l: 'Invoice' }];
-  if (role === 'inventory') return [
-    { id: 'stock', l: 'Stock' }, { id: 'waybill-in', l: 'Waybill In' }, { id: 'waybill-out', l: 'Waybill Out' }, { id: 'transfer', l: 'Transfer' },
+  if (role === 'inventory') return [{ id: 'stock', l: 'Stock' }];
+  if (role === 'inventory-admin') return [
+    { id: 'stock', l: 'Stock' }, { id: 'waybill-in', l: 'Waybill In' }, { id: 'waybill-out', l: 'Waybill Out' }, { id: 'transfer', l: 'Transfer' }, { id: 'inv-history', l: 'History' },
   ];
   return [];
 }
 
 export function statusBadgeType(s) {
-  return { Delivered: 'green', Failed: 'red', Pending: 'amber', 'Not Delivered': 'gray', Unassigned: 'amber', Cancelled: 'red' }[s] || 'gray';
+  return {
+    Delivered: 'green', Completed: 'green',
+    Failed: 'red', Replaced: 'amber', Cancelled: 'red',
+    Pending: 'amber', 'Not Delivered': 'gray', Unassigned: 'amber',
+  }[s] || 'gray';
 }
 
 export function branchCalc(b, cfg, db, filterP) {
-  const fo = filterP(db.orders.filter(o => o.branch === b && o.status === 'Delivered'));
+  const fo = filterP(db.orders.filter(o => o.branch === b && REVENUE_STATUSES.includes(o.status)));
   const pays = Object.values(db.payments).filter(p => p.branch === b);
   const cash = pays.reduce((s, p) => s + (p.cash || 0), 0);
   const pos = pays.reduce((s, p) => s + (p.pos || 0), 0);

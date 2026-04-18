@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
-import { fmt, filterPeriod, ot, gp, calcBonus, getBonusCycleOrders, getDups, TODAY } from '../utils/helpers';
+import { fmt, filterPeriod, ot, gp, calcBonus, getBonusCycleOrders, getDups, REVENUE_STATUSES, TODAY } from '../utils/helpers';
 import { Av, Badge, SBadge } from '../components/ui';
 import DateFilter from '../components/DateFilter';
+import PriceInput from '../components/PriceInput';
 
 function useFP() {
   const { period, rangeFrom, rangeTo } = useApp();
@@ -40,6 +41,13 @@ function RiderLog({ filterP, fmtC, branch }) {
   const [vendor, setVendor] = useState(cfg.vendors[0] || '');
   const [products, setProducts] = useState([{ id: Date.now(), name: '', price: '', qty: '1' }]);
 
+  const validProductList = Array.isArray(cfg.products) ? cfg.products : (cfg.products?.[vendor] || []);
+
+  function handleVendorChange(v) {
+    setVendor(v);
+    setProducts([{ id: Date.now(), name: '', price: '', qty: '1' }]);
+  }
+
   function addProd() {
     setProducts(p => [...p, { id: Date.now(), name: '', price: '', qty: '1' }]);
   }
@@ -52,10 +60,21 @@ function RiderLog({ filterP, fmtC, branch }) {
     setProducts(p => p.map(r => r.id === id ? { ...r, [field]: value } : r));
   }
 
+  function getStockForProduct(productName) {
+    const entry = db.inventory[b]?.[vendor]?.[productName];
+    if (!entry) return 0;
+    return (entry.received || 0) - (entry.sentOut || 0) - (entry.delivered || 0);
+  }
+  const allProdsValid = products.every(r => {
+    if (!validProductList.includes(r.name) || Number(r.price) <= 0) return false;
+    if (getStockForProduct(r.name) <= 0) return false;
+    return true;
+  });
+  const canSave = customerName.trim() && phone.trim() && address.trim() && allProdsValid;
+
   function save() {
-    if (!customerName) { alert('Customer name required'); return; }
-    const prods = products.filter(r => r.name && Number(r.price) > 0).map(r => ({ vendor, name: r.name, price: Number(r.price), qty: Number(r.qty) || 1 }));
-    if (!prods.length) { alert('Add at least one product'); return; }
+    if (!canSave) return;
+    const prods = products.map(r => ({ vendor, name: r.name, price: Number(r.price), qty: Number(r.qty) || 1 }));
     setDb(prev => ({
       ...prev,
       orders: [...prev.orders, { id: Date.now(), branch: b, rider: '', customerName, phone, address, status: 'Unassigned', date, products: prods }],
@@ -74,7 +93,7 @@ function RiderLog({ filterP, fmtC, branch }) {
             <div><label className="lbl">Customer Name</label><input className="inp" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="e.g. Mrs Okonkwo" /></div>
             <div><label className="lbl">Phone</label><input className="inp" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="080..." /></div>
             <div><label className="lbl">Vendor</label>
-              <select className="inp" value={vendor} onChange={e => setVendor(e.target.value)}>
+              <select className="inp" value={vendor} onChange={e => handleVendorChange(e.target.value)}>
                 {cfg.vendors.map(v => <option key={v}>{v}</option>)}
               </select>
             </div>
@@ -88,16 +107,28 @@ function RiderLog({ filterP, fmtC, branch }) {
                 key={row.id}
                 idx={i}
                 row={row}
-                products={cfg.products}
+                products={validProductList}
                 showRemove={products.length > 1}
                 onRemove={() => removeProd(row.id)}
                 onChange={(field, val) => updateProd(row.id, field, val)}
+                branch={b}
+                vendor={vendor}
               />
             ))}
           </div>
           <button className="btn btn-outline btn-sm mb12" onClick={addProd}>+ Add Product</button>
           <div className="divider" />
-          <button className="btn btn-primary mt8" onClick={save}>Save Order</button>
+          {!canSave && (customerName || phone || address || products[0].name) && (
+            <p style={{ fontSize: 12, color: 'var(--amber)', marginBottom: 8 }}>
+              {!customerName.trim() ? '⚠ Customer name required' :
+               !phone.trim() ? '⚠ Phone required' :
+               !address.trim() ? '⚠ Address required' :
+               '⚠ All products must be selected from the dropdown with a valid price'}
+            </p>
+          )}
+          <button className="btn btn-primary mt8" onClick={save} disabled={!canSave} style={{ opacity: canSave ? 1 : 0.45 }}>
+            Save Order
+          </button>
         </div>
         {unassigned.length > 0 && (
           <div className="card card-amber row-b mt12">
@@ -110,43 +141,96 @@ function RiderLog({ filterP, fmtC, branch }) {
   );
 }
 
-function ProdRow({ idx, row, products, showRemove, onRemove, onChange }) {
-  const [suggestions, setSuggestions] = useState([]);
+function ProdRow({ idx, row, products, showRemove, onRemove, onChange, branch, vendor }) {
+  const { db } = useApp();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(row.name || '');
+
+  useEffect(() => { setQuery(row.name || ''); }, [row.name]);
+
+  const isValid = !query || products.includes(row.name);
+
+  function getStock(productName) {
+    const entry = db.inventory[branch]?.[vendor]?.[productName];
+    if (!entry) return 0;
+    return (entry.received || 0) - (entry.sentOut || 0) - (entry.delivered || 0);
+  }
+
+  const stockRemaining = row.name && isValid ? getStock(row.name) : null;
+  const outOfStock = stockRemaining !== null && stockRemaining <= 0;
+
+  const filtered = query
+    ? products.filter(p => p.toLowerCase().includes(query.toLowerCase()))
+    : products;
+
+  function pick(p) {
+    const st = getStock(p);
+    if (st !== null && st <= 0) return;
+    onChange('name', p);
+    setQuery(p);
+    setOpen(false);
+  }
 
   function handleInput(val) {
+    setQuery(val);
     onChange('name', val);
-    if (val) setSuggestions(products.filter(p => p.toLowerCase().includes(val.toLowerCase())));
-    else setSuggestions([]);
+    setOpen(true);
   }
 
   return (
-    <div className="card card-sm mb6">
+    <div className="card card-sm mb6" style={{ borderColor: (row.name && !isValid) || outOfStock ? 'var(--red-bd)' : undefined }}>
       <div className="row-b mb8">
         <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--t3)' }}>Product {idx + 1}</p>
         {showRemove && <button className="btn btn-red-soft btn-xs" onClick={onRemove}>Remove</button>}
       </div>
       <div className="g3">
         <div className="ac-wrap">
-          <label className="lbl">Name (type to search)</label>
+          <label className="lbl">
+            Product
+            {row.name && !isValid && <span style={{ color: 'var(--red)', marginLeft: 4 }}>— not in list</span>}
+            {row.name && isValid && !outOfStock && <span style={{ color: 'var(--green)', marginLeft: 4 }}>✓</span>}
+            {outOfStock && <span style={{ color: 'var(--red)', marginLeft: 4, fontWeight: 700 }}>— Out of Stock</span>}
+          </label>
           <input
             className="inp"
-            value={row.name}
-            placeholder="Product name..."
+            value={query}
+            placeholder="Click to browse products..."
             autoComplete="off"
+            style={{ borderColor: (row.name && !isValid) || outOfStock ? 'var(--red)' : row.name && isValid ? 'var(--green)' : undefined }}
             onChange={e => handleInput(e.target.value)}
-            onBlur={() => setTimeout(() => setSuggestions([]), 200)}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 180)}
           />
-          {suggestions.length > 0 && (
+          {open && (
             <div className="ac-list open">
-              {suggestions.map(p => (
-                <div key={p} className="ac-item" onMouseDown={() => { onChange('name', p); setSuggestions([]); }}>{p}</div>
-              ))}
+              {filtered.length > 0
+                ? filtered.map(p => {
+                    const st = getStock(p);
+                    const oos = st !== null && st <= 0;
+                    return (
+                      <div
+                        key={p}
+                        className="ac-item"
+                        style={{ opacity: oos ? 0.4 : 1, cursor: oos ? 'not-allowed' : 'pointer' }}
+                        onMouseDown={() => pick(p)}
+                      >
+                        {p}
+                        {oos && <span style={{ fontSize: 10, color: 'var(--red)', marginLeft: 6 }}>Out of stock</span>}
+                        {!oos && st > 0 && <span style={{ fontSize: 10, color: 'var(--t4)', marginLeft: 6 }}>{st} left</span>}
+                      </div>
+                    );
+                  })
+                : <div className="ac-item" style={{ color: 'var(--t4)', fontStyle: 'italic' }}>No products match</div>
+              }
             </div>
           )}
         </div>
-        <div><label className="lbl">Price (₦)</label><input className="inp" type="number" value={row.price} placeholder="0" onChange={e => onChange('price', e.target.value)} /></div>
+        <div><label className="lbl">Price</label><PriceInput value={row.price} onChange={v => onChange('price', v)} /></div>
         <div><label className="lbl">Qty</label><input className="inp" type="number" value={row.qty} min="1" onChange={e => onChange('qty', e.target.value)} /></div>
       </div>
+      {outOfStock && (
+        <p style={{ fontSize: 11, color: 'var(--red)', marginTop: 6, fontWeight: 600 }}>⚠ No stock available for this product at {branch}</p>
+      )}
     </div>
   );
 }
@@ -240,15 +324,39 @@ function RiderUpdate({ filterP, fmtC, branch }) {
   const fo = filterP(db.orders.filter(o => o.branch === b));
   const pending = fo.filter(o => o.status === 'Pending');
   const delivered = fo.filter(o => o.status === 'Delivered');
+  const completed = fo.filter(o => o.status === 'Completed');
   const failed = fo.filter(o => o.status === 'Failed');
+  const replaced = fo.filter(o => o.status === 'Replaced');
   const notDelivered = fo.filter(o => o.status === 'Not Delivered');
   const riderExpToday = db.riderExpenses.filter(e => e.branch === b && e.date === TODAY);
   const expByRider = riderExpToday.reduce((acc, e) => { (acc[e.rider] = acc[e.rider] || []).push(e); return acc; }, {});
   const [riderFilter, setRiderFilter] = useState('');
   const [expFields, setExpFields] = useState({ rider: riders[0] || '', amount: '', desc: '' });
+  const [completingId, setCompletingId] = useState(null);
+  const [completingAmt, setCompletingAmt] = useState('');
 
   function setStatus(id, status) {
     setDb(prev => ({ ...prev, orders: prev.orders.map(o => String(o.id) === String(id) ? { ...o, status } : o) }));
+  }
+
+  function startComplete(order) {
+    const full = order.products?.reduce((s, p) => s + (Number(p.price)||0) * (Number(p.qty)||1), 0) || 0;
+    setCompletingId(order.id);
+    setCompletingAmt(String(full));
+  }
+
+  function confirmComplete() {
+    const paid = Number(completingAmt);
+    if (!paid || paid <= 0) { alert('Enter the amount paid by customer'); return; }
+    setDb(prev => ({
+      ...prev,
+      orders: prev.orders.map(o => String(o.id) === String(completingId)
+        ? { ...o, status: 'Completed', paidAmount: paid }
+        : o
+      ),
+    }));
+    setCompletingId(null);
+    setCompletingAmt('');
   }
 
   function saveRiderExp() {
@@ -309,6 +417,19 @@ function RiderUpdate({ filterP, fmtC, branch }) {
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--amber)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 10 }}>Pending · {filtPending.length}</p>
             {filtPending.map(o => (
               <div key={o.id} className="card mb8">
+                {String(completingId) === String(o.id) && (
+                  <div style={{ background: 'var(--green-lt)', border: '1.5px solid var(--green-bd)', borderRadius: 'var(--r)', padding: '12px 14px', marginBottom: 12 }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)', marginBottom: 4 }}>Confirm Completion</p>
+                    <p style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 10 }}>
+                      Full value: <strong>{fmtC(o.products?.reduce((s,p)=>s+(Number(p.price)||0)*(Number(p.qty)||1),0)||0)}</strong> — enter what customer actually paid:
+                    </p>
+                    <div className="row" style={{ gap: 8 }}>
+                      <input className="inp" type="number" value={completingAmt} onChange={e => setCompletingAmt(e.target.value)} placeholder="Amount paid..." style={{ flex: 1 }} />
+                      <button className="btn btn-green btn-sm" onClick={confirmComplete}>Confirm</button>
+                      <button className="btn btn-outline btn-sm" onClick={() => setCompletingId(null)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
                 <div className="row-b mb10">
                   <div className="row" style={{ gap: 9 }}>
                     <Av name={o.rider || '?'} size={26} />
@@ -320,10 +441,16 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                   </div>
                   <p style={{ fontWeight: 700, fontSize: 15 }}>{fmtC(ot(o))}</p>
                 </div>
-                <div className="row" style={{ gap: 6 }}>
-                  <button className="btn btn-green btn-sm" style={{ flex: 1 }} onClick={() => setEditModalOrderId(o.id)}>✓ Delivered (Edit first)</button>
-                  <button className="btn btn-red-soft btn-sm" style={{ flex: 1 }} onClick={() => setStatus(o.id, 'Failed')}>✗ Failed</button>
-                  <button className="btn btn-outline btn-xs" onClick={() => setStatus(o.id, 'Not Delivered')}>Not out</button>
+                <div className="col" style={{ gap: 6 }}>
+                  <div className="row" style={{ gap: 6 }}>
+                    <button className="btn btn-green btn-sm" style={{ flex: 1 }} onClick={() => setEditModalOrderId(o.id)}>✓ Delivered</button>
+                    <button className="btn btn-green btn-sm" style={{ flex: 1, opacity: 0.85, background: '#0d9488' }} onClick={() => startComplete(o)}>⊕ Completed</button>
+                  </div>
+                  <div className="row" style={{ gap: 6 }}>
+                    <button className="btn btn-red-soft btn-sm" style={{ flex: 1 }} onClick={() => setStatus(o.id, 'Failed')}>✗ Failed</button>
+                    <button className="btn btn-amber-soft btn-sm" style={{ flex: 1 }} onClick={() => setStatus(o.id, 'Replaced')}>↩ Replaced</button>
+                    <button className="btn btn-outline btn-xs" onClick={() => setStatus(o.id, 'Not Delivered')}>Not out</button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -347,17 +474,20 @@ function RiderUpdate({ filterP, fmtC, branch }) {
           </>
         )}
 
-        {delivered.length > 0 && (
+        {(delivered.length > 0 || completed.length > 0) && (
           <>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.07em', margin: '16px 0 10px' }}>Delivered · {delivered.length}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.07em', margin: '16px 0 10px' }}>
+              Delivered / Completed · {delivered.length + completed.length}
+            </p>
             <div className="card">
               <table className="tbl">
-                <thead><tr><th>Customer</th><th>Rider</th><th>Value</th></tr></thead>
+                <thead><tr><th>Customer</th><th>Rider</th><th>Status</th><th>Value</th></tr></thead>
                 <tbody>
-                  {delivered.map(o => (
+                  {[...delivered, ...completed].map(o => (
                     <tr key={o.id}>
                       <td style={{ fontWeight: 500 }}>{o.customerName}</td>
                       <td style={{ fontSize: 12 }}>{o.rider}</td>
+                      <td><SBadge status={o.status} /></td>
                       <td style={{ fontWeight: 600, color: 'var(--green)' }}>{fmtC(ot(o))}</td>
                     </tr>
                   ))}
@@ -367,17 +497,19 @@ function RiderUpdate({ filterP, fmtC, branch }) {
           </>
         )}
 
-        {failed.length > 0 && (
+        {(failed.length > 0 || replaced.length > 0) && (
           <>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '.07em', margin: '16px 0 10px' }}>Failed · {failed.length}</p>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '.07em', margin: '16px 0 10px' }}>
+              Failed / Replaced · {failed.length + replaced.length}
+            </p>
             <div className="card">
               <table className="tbl">
                 <tbody>
-                  {failed.map(o => (
+                  {[...failed, ...replaced].map(o => (
                     <tr key={o.id}>
                       <td style={{ fontWeight: 500 }}>{o.customerName}</td>
-                      <td><SBadge status="Failed" /></td>
-                      <td style={{ fontSize: 11, color: 'var(--t4)' }}>Fee set by CEO</td>
+                      <td><SBadge status={o.status} /></td>
+                      <td style={{ fontSize: 11, color: 'var(--t4)' }}>No revenue</td>
                     </tr>
                   ))}
                 </tbody>
@@ -386,7 +518,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
           </>
         )}
 
-        {!pending.length && !delivered.length && !failed.length && !notDelivered.length && (
+        {!pending.length && !delivered.length && !completed.length && !failed.length && !replaced.length && !notDelivered.length && (
           <div className="empty-box"><p className="empty-t">No orders in this period</p></div>
         )}
       </div>
@@ -410,7 +542,7 @@ function RiderMyRiders({ filterP, fmtC, branch }) {
             <thead><tr><th>Rider</th><th>Deliveries</th><th>Value</th><th>Cycle Bonus</th></tr></thead>
             <tbody>
               {riders.map(name => {
-                const ords = fo.filter(o => o.rider === name && o.status === 'Delivered');
+                const ords = fo.filter(o => o.rider === name && REVENUE_STATUSES.includes(o.status));
                 const val = ords.reduce((s, o) => s + ot(o), 0);
                 const cc = getBonusCycleOrders(name, db).length;
                 return (

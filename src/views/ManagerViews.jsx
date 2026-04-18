@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { fmt, filterPeriod, ot, calcBonus, getBonusCycleOrders, TODAY } from '../utils/helpers';
+import { fmt, filterPeriod, ot, calcBonus, getBonusCycleOrders, REVENUE_STATUSES, TODAY } from '../utils/helpers';
 import { Av, Badge, SBadge } from '../components/ui';
 import DateFilter from '../components/DateFilter';
+import PriceInput from '../components/PriceInput';
 
 function useFP() {
   const { period, rangeFrom, rangeTo } = useApp();
@@ -30,7 +31,7 @@ export default function ManagerViews({ tabId }) {
 function MgrRemittance({ filterP, fmtC, branch }) {
   const { db, setDb } = useApp();
   const b = branch;
-  const fo = filterP(db.orders.filter(o => o.branch === b && o.status === 'Delivered'));
+  const fo = filterP(db.orders.filter(o => o.branch === b && REVENUE_STATUSES.includes(o.status)));
   const pairs = [...new Set(fo.map(o => `${o.rider}||${o.date}`))].map(k => { const [r, d] = k.split('||'); return { rider: r, date: d }; });
   const pays = Object.values(db.payments).filter(p => p.branch === b);
   const totalCash = pays.reduce((s, p) => s + (p.cash || 0), 0);
@@ -39,7 +40,7 @@ function MgrRemittance({ filterP, fmtC, branch }) {
   function saveRemittance(key, expected, cashVal, posVal, giftVal) {
     const netPOS = Math.max(0, posVal - giftVal);
     const rider = key.split('||')[0];
-    const shortfall = Math.max(0, expected - cashVal);
+    const shortfall = Math.max(0, expected - cashVal - netPOS);
     setDb(prev => ({
       ...prev,
       payments: {
@@ -52,7 +53,7 @@ function MgrRemittance({ filterP, fmtC, branch }) {
   function logShortfall(key, expected, cashVal, posVal, giftVal) {
     const netPOS = Math.max(0, posVal - giftVal);
     const rider = key.split('||')[0];
-    const shortfall = Math.max(0, expected - cashVal);
+    const shortfall = Math.max(0, expected - cashVal - netPOS);
     if (!confirm(`Record shortfall of ${fmtC(shortfall)} for ${rider}?`)) return;
     setDb(prev => ({
       ...prev,
@@ -144,14 +145,14 @@ function RemittanceCard({ rider, date, orders, payment: pay, fmtC, onSave, onSho
         </div>
       )}
 
-      {!cl && (
+      {pay.cash === undefined && (
         <>
           <div className="g3 mb10">
-            <div><label className="lbl">Cash Received (₦)</label><input className="inp" type="number" value={cash} onChange={e => setCash(e.target.value)} placeholder="0" /></div>
-            <div><label className="lbl">POS Received (₦)</label><input className="inp" type="number" value={pos} onChange={e => setPos(e.target.value)} placeholder="0" /></div>
-            <div><label className="lbl">Rider Gift (from POS)</label><input className="inp" type="number" value={gift} onChange={e => setGift(e.target.value)} placeholder="0" style={{ borderColor: 'var(--amber-bd)' }} /></div>
+            <div><label className="lbl">Cash Received</label><PriceInput value={cash} onChange={setCash} /></div>
+            <div><label className="lbl">POS Received</label><PriceInput value={pos} onChange={setPos} /></div>
+            <div><label className="lbl">Rider Gift (from POS)</label><PriceInput value={gift} onChange={setGift} style={{ borderColor: 'var(--amber-bd)' }} /></div>
           </div>
-          <p style={{ fontSize: 11, color: 'var(--t4)', marginBottom: 10 }}>Gift is deducted from POS. Cash − Gift goes through remittance. POS goes direct to boss.</p>
+          <p style={{ fontSize: 11, color: 'var(--t4)', marginBottom: 10 }}>Gift is deducted from POS. Cash goes through remittance. POS goes direct to boss.</p>
           <div className="row" style={{ gap: 8 }}>
             <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => { onSave(Number(cash) || 0, Number(pos) || 0, Number(gift) || 0); setCash(''); setPos(''); setGift(''); }}>Confirm</button>
             <button className="btn btn-red-soft btn-sm" onClick={() => { onShortfall(Number(cash) || 0, Number(pos) || 0, Number(gift) || 0); setCash(''); setPos(''); setGift(''); }}>Log Shortfall</button>
@@ -163,7 +164,7 @@ function RemittanceCard({ rider, date, orders, payment: pay, fmtC, onSave, onSho
         <div className="mt8">
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--red)', marginBottom: 6 }}>Outstanding: {fmtC(pay.shortfall)} — log additional payment</p>
           <div className="row">
-            <input className="inp" type="number" value={shortAdd} placeholder="Additional amount paid..." onChange={e => setShortAdd(e.target.value)} />
+            <PriceInput value={shortAdd} onChange={setShortAdd} placeholder="Additional amount paid..." />
             <button className="btn btn-green btn-sm" onClick={() => { onPayShortfall(Number(shortAdd) || 0); setShortAdd(''); }}>Apply</button>
           </div>
         </div>
@@ -186,7 +187,8 @@ function MgrSend({ filterP, fmtC, branch }) {
 
   function submit() {
     const amount = Number(fields.amount);
-    if (!amount || !fields.txID) { alert('Amount and Transaction ID required'); return; }
+    if (!amount) { alert('Enter an amount'); return; }
+    if (!fields.txID) return;
     setDb(prev => ({
       ...prev,
       remittances: [...prev.remittances, { id: Date.now(), branch: b, amount, txID: fields.txID, date: fields.date, bank: fields.bank, account: fields.account }],
@@ -216,19 +218,19 @@ function MgrSend({ filterP, fmtC, branch }) {
         <div className="card">
           <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Log Transfer</p>
           <div className="g2 mb12">
-            <div><label className="lbl">Amount</label><input className="inp" type="number" value={fields.amount} onChange={e => setFields(f => ({ ...f, amount: e.target.value }))} placeholder="0" /></div>
+            <div><label className="lbl">Amount</label><PriceInput value={fields.amount} onChange={v => setFields(f => ({ ...f, amount: v }))} /></div>
             <div><label className="lbl">Date</label><input className="inp" type="date" value={fields.date} onChange={e => setFields(f => ({ ...f, date: e.target.value }))} /></div>
             <div><label className="lbl">Bank Name</label><input className="inp" value={fields.bank} onChange={e => setFields(f => ({ ...f, bank: e.target.value }))} placeholder="GTBank, Opay..." /></div>
             <div><label className="lbl">Account Number</label><input className="inp" value={fields.account} onChange={e => setFields(f => ({ ...f, account: e.target.value }))} placeholder="0123456789" style={{ fontFamily: 'monospace' }} /></div>
-            <div className="span2"><label className="lbl">Transaction ID</label><input className="inp" value={fields.txID} onChange={e => setFields(f => ({ ...f, txID: e.target.value }))} placeholder="TRF..." style={{ fontFamily: 'monospace' }} /></div>
+            <div className="span2"><label className="lbl">Transaction ID <span style={{ color: 'var(--red)' }}>*</span></label><input className="inp" value={fields.txID} onChange={e => setFields(f => ({ ...f, txID: e.target.value }))} placeholder="TRF..." style={{ fontFamily: 'monospace', borderColor: fields.txID ? undefined : 'var(--amber-bd)' }} /></div>
           </div>
-          <button className="btn btn-primary" onClick={submit}>Submit to Boss →</button>
+          <button className="btn btn-primary" onClick={submit} disabled={!fields.txID} style={{ opacity: fields.txID ? 1 : 0.45 }}>Submit to Boss →</button>
         </div>
         {prevRems.length > 0 && (
           <div className="card mt12">
             <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Previous transfers</p>
             <table className="tbl">
-              <thead><tr><th>Amount</th><th>Bank</th><th>Account</th><th>TXN</th><th>Date</th></tr></thead>
+              <thead><tr><th>Amount</th><th>Bank</th><th>Account</th><th>TXN</th><th>Date</th><th>Boss</th></tr></thead>
               <tbody>
                 {prevRems.map((r, i) => (
                   <tr key={i}>
@@ -237,6 +239,7 @@ function MgrSend({ filterP, fmtC, branch }) {
                     <td><code style={{ fontSize: 11 }}>{r.account || '—'}</code></td>
                     <td><code style={{ fontSize: 11 }}>{r.txID || '—'}</code></td>
                     <td style={{ fontSize: 11, color: 'var(--t4)' }}>{r.date}</td>
+                    <td>{r.verified ? <Badge text="✓ Verified" type="green" /> : <Badge text="Pending" type="amber" />}</td>
                   </tr>
                 ))}
               </tbody>
@@ -274,7 +277,7 @@ function MgrExpenses({ filterP, fmtC, branch }) {
           <div className="g2 mb12">
             <div><label className="lbl">Description</label><input className="inp" value={fields.desc} onChange={e => setFields(f => ({ ...f, desc: e.target.value }))} placeholder="What was this for?" /></div>
             <div><label className="lbl">Category</label><input className="inp" value={fields.cat} onChange={e => setFields(f => ({ ...f, cat: e.target.value }))} placeholder="Fuel, Office..." /></div>
-            <div><label className="lbl">Amount (₦)</label><input className="inp" type="number" value={fields.amount} onChange={e => setFields(f => ({ ...f, amount: e.target.value }))} placeholder="0" /></div>
+            <div><label className="lbl">Amount</label><PriceInput value={fields.amount} onChange={v => setFields(f => ({ ...f, amount: v }))} /></div>
             <div><label className="lbl">Date</label><input className="inp" type="date" value={fields.date} onChange={e => setFields(f => ({ ...f, date: e.target.value }))} /></div>
           </div>
           <button className="btn btn-primary btn-sm" onClick={save}>Add Expense</button>
@@ -308,7 +311,7 @@ function MgrExpenses({ filterP, fmtC, branch }) {
 function MgrRiders({ filterP, fmtC, branch }) {
   const { cfg, db } = useApp();
   const b = branch;
-  const fo = filterP(db.orders.filter(o => o.branch === b && o.status === 'Delivered'));
+  const fo = filterP(db.orders.filter(o => o.branch === b && REVENUE_STATUSES.includes(o.status)));
   const riders = db.riders[b] || [];
 
   return (

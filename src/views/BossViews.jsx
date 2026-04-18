@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, calcBonus, bonusRate, getTabs, ot, gp, TODAY } from '../utils/helpers';
+import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, calcBonus, bonusRate, getTabs, ot, gp, REVENUE_STATUSES, TODAY } from '../utils/helpers';
 import { Av, Badge, SBadge } from '../components/ui';
 import DateFilter from '../components/DateFilter';
 
@@ -219,19 +219,32 @@ function BossRiders({ fmtC, cfg, db }) {
 }
 
 function BossRemittances({ filterP, fmtC, cfg, db }) {
+  const { setDb } = useApp();
+
+  function verify(id) {
+    setDb(prev => ({
+      ...prev,
+      remittances: prev.remittances.map(r => r.id === id ? { ...r, verified: true } : r),
+    }));
+  }
+
   return (
     <>
-      <div className="pg-hd"><p className="pg-title">Remittances & Fraud Watch</p></div>
+      <div className="pg-hd"><p className="pg-title">Remittances & Fraud Watch</p><p className="pg-sub">Verify each transfer after confirming in your bank</p></div>
       <div className="pg-body">
         <DateFilter />
         {cfg.branches.map(b => {
           const c = branchCalc(b, cfg, db, filterP);
           const rems = filterP(db.remittances.filter(r => r.branch === b));
           const shortPays = Object.values(db.payments).filter(p => p.branch === b && p.shortfall > 0);
+          const unverified = rems.filter(r => !r.verified).length;
           return (
             <div key={b} className="card mb14">
               <div className="row-b mb14">
-                <p style={{ fontSize: 15, fontWeight: 700 }}>{b} Branch</p>
+                <div>
+                  <p style={{ fontSize: 15, fontWeight: 700 }}>{b} Branch</p>
+                  {unverified > 0 && <p style={{ fontSize: 11, color: 'var(--amber)', marginTop: 2 }}>⏳ {unverified} transfer{unverified > 1 ? 's' : ''} awaiting your verification</p>}
+                </div>
                 {c.stillToSend > 0
                   ? <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--red)' }}>⚠ Owes {fmtC(c.stillToSend)}</span>
                   : <Badge text="Balanced" type="green" />}
@@ -262,7 +275,7 @@ function BossRemittances({ filterP, fmtC, cfg, db }) {
                 </div>
               )}
               <table className="tbl">
-                <thead><tr><th>Amount</th><th>Bank</th><th>Account</th><th>TXN ID</th><th>Sent</th></tr></thead>
+                <thead><tr><th>Amount</th><th>Bank</th><th>Account</th><th>TXN ID</th><th>Sent</th><th>Status</th></tr></thead>
                 <tbody>
                   {rems.length ? rems.map((r, i) => (
                     <tr key={i}>
@@ -271,9 +284,14 @@ function BossRemittances({ filterP, fmtC, cfg, db }) {
                       <td><code style={{ fontSize: 11 }}>{r.account || '—'}</code></td>
                       <td><code style={{ fontSize: 11 }}>{r.txID || '—'}</code></td>
                       <td style={{ fontSize: 11, color: 'var(--t4)' }}>{r.date}</td>
+                      <td>
+                        {r.verified
+                          ? <Badge text="✓ Verified" type="green" />
+                          : <button className="btn btn-amber-soft btn-xs" onClick={() => verify(r.id)}>Verify →</button>}
+                      </td>
                     </tr>
                   )) : (
-                    <tr><td colSpan={5} style={{ color: 'var(--t4)', fontSize: 12 }}>No remittance logged</td></tr>
+                    <tr><td colSpan={6} style={{ color: 'var(--t4)', fontSize: 12 }}>No remittance logged</td></tr>
                   )}
                 </tbody>
               </table>
@@ -290,9 +308,9 @@ function BossVendorPay({ fmtC, cfg, db }) {
   const [payFields, setPayFields] = useState({ amount: '', date: TODAY, bank: '', account: '', accountName: '', txID: '' });
 
   function vendorCalc(vn) {
-    const vOrds = db.orders.filter(o => gp(o).some(p => p.vendor === vn) && (o.status === 'Delivered' || o.status === 'Failed'));
-    const del = vOrds.filter(o => o.status === 'Delivered');
-    function vt(o) { return gp(o).filter(p => p.vendor === vn).reduce((s, p) => s + (Number(p.price) || 0) * (Number(p.qty) || 1), 0); }
+    const vOrds = db.orders.filter(o => gp(o).some(p => p.vendor === vn) && (REVENUE_STATUSES.includes(o.status) || o.status === 'Failed' || o.status === 'Replaced'));
+    const del = vOrds.filter(o => REVENUE_STATUSES.includes(o.status));
+    function vt(o) { return gp(o).filter(p => p.vendor === vn).reduce((s, p) => s + (Number(p.price) || 0), 0); }
     const totalVal = del.reduce((s, o) => s + vt(o), 0);
     const fees = vOrds.reduce((s, o) => s + (db.deliveryFees[o.id] || 0), 0);
     const net = Math.max(0, totalVal - fees);
@@ -427,11 +445,13 @@ function BossVendorPay({ fmtC, cfg, db }) {
 function BossInventory({ cfg, db }) {
   const [sv, setSv] = useState('');
   const [sp, setSp] = useState('');
+  const [branch, setBranch] = useState(cfg.branches[0] || 'IDIMU');
 
+  const branchInv = db.inventory[branch] || {};
   const rows = cfg.vendors
     .filter(v => !sv || v.toLowerCase().includes(sv.toLowerCase()))
     .map(v => {
-      const items = db.inventory[v] || {};
+      const items = branchInv[v] || {};
       const filt = Object.entries(items).filter(([p]) => !sp || p.toLowerCase().includes(sp.toLowerCase()));
       return { v, filt };
     })
@@ -441,6 +461,11 @@ function BossInventory({ cfg, db }) {
     <>
       <div className="pg-hd"><p className="pg-title">Inventory</p></div>
       <div className="pg-body">
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          {cfg.branches.map(b => (
+            <button key={b} className={`btn btn-sm ${branch === b ? 'btn-primary' : 'btn-outline'}`} onClick={() => setBranch(b)}>{b}</button>
+          ))}
+        </div>
         <div className="g2 mb16">
           <div className="search-wrap"><span className="s-ico">🔍</span><input className="inp" placeholder="Search vendor..." value={sv} onChange={e => setSv(e.target.value)} /></div>
           <div className="search-wrap"><span className="s-ico">🔍</span><input className="inp" placeholder="Search product..." value={sp} onChange={e => setSp(e.target.value)} /></div>
@@ -471,7 +496,7 @@ function BossInventory({ cfg, db }) {
             </div>
           </div>
         ))}
-        {rows.length === 0 && <div className="empty-box"><p className="empty-t">No results</p></div>}
+        {rows.length === 0 && <div className="empty-box"><p className="empty-t">No results for {branch}</p></div>}
       </div>
     </>
   );
@@ -520,7 +545,7 @@ function BossDeliveryFees({ fmtC, cfg, db, setActiveTab }) {
   const { setDb } = useApp();
   const [feeInputs, setFeeInputs] = useState({});
 
-  const eligible = db.orders.filter(o => o.status === 'Delivered' || o.status === 'Failed');
+  const eligible = db.orders.filter(o => REVENUE_STATUSES.includes(o.status) || o.status === 'Failed' || o.status === 'Replaced');
   const pending = eligible.filter(o => !db.deliveryFees[o.id]);
   const done = eligible.filter(o => db.deliveryFees[o.id]);
 
