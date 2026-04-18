@@ -107,7 +107,7 @@ label.lbl{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bo
 /* ── MOBILE OVERLAY & HAMBURGER ── */
 .sb-overlay{display:none;position:fixed;inset:0;background:rgba(13,27,62,.5);z-index:499;backdrop-filter:blur(3px)}
 .hamburger{display:none;background:none;border:none;font-size:22px;color:var(--navy);padding:4px 8px;line-height:1}
-.mobile-topbar{display:none;align-items:center;padding:10px 14px 0;gap:6px;background:var(--bg)}
+.mobile-topbar{display:none;align-items:center;padding:10px 14px;gap:6px;background:var(--bg);position:sticky;top:0;z-index:100;border-bottom:1.5px solid var(--border-soft);box-shadow:0 2px 8px rgba(13,27,62,.06)}
 
 /* ── PAGE ── */
 .pg-hd{padding:24px 28px 20px;border-bottom:1.5px solid var(--border-soft);background:#fff}
@@ -324,10 +324,20 @@ label.lbl{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bo
   .g4{grid-template-columns:1fr 1fr}
   .navy-hero .bottom-strip{grid-template-columns:1fr 1fr}
   .navy-hero .bottom-strip .bs-cell:last-child{grid-column:1/-1}
-  .tbl-wrap{margin:0 -14px;padding:0 14px}
+  /* Make ALL tables scroll horizontally */
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px;padding:0 14px}
+  .card .tbl-wrap{margin:0;padding:0}
   .modal-box{padding:22px 16px;border-radius:var(--r-lg)}
   .stat-v{font-size:20px}
   .login-card{padding:24px 20px;border-radius:20px}
+  /* Branch/stats cards */
+  .branch-card .mini-stats{grid-template-columns:1fr 1fr}
+  .branch-card .bc-head{flex-wrap:wrap}
+  /* Date filter wraps */
+  .df{gap:2px}
+  .df-btn{padding:5px 10px;font-size:11px}
+  /* Stat grid */
+  .g4.stats{grid-template-columns:1fr 1fr}
 }
 
 @media (max-width: 400px) {

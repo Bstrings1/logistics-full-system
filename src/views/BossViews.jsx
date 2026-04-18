@@ -15,6 +15,8 @@ const CSS = `
 
 /* KPI cards */
 .bv-kpis{display:grid;gap:12px;margin-bottom:16px}
+.bv-kpis.c4{grid-template-columns:repeat(4,1fr)}
+.bv-kpis.c3{grid-template-columns:repeat(3,1fr)}
 .bv-kpi{background:#fff;border:1px solid #eef0f7;border-radius:14px;padding:16px 18px;
   box-shadow:0 1px 2px rgba(11,18,48,.03)}
 .bv-kpi-l{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#858cab}
@@ -30,7 +32,7 @@ const CSS = `
 .bv-kpi.accent .bv-kpi-s{color:#3b54ff;opacity:.7}
 
 /* Rowcard */
-.bv-rowcard{background:#fff;border:1px solid #eef0f7;border-radius:14px;margin-bottom:12px;overflow:hidden;
+.bv-rowcard{background:#fff;border:1px solid #eef0f7;border-radius:14px;margin-bottom:12px;
   box-shadow:0 1px 2px rgba(11,18,48,.03)}
 .bv-rowcard-head{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #eef0f7}
 .bv-b-av{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:14px;flex-shrink:0}
@@ -73,9 +75,9 @@ const CSS = `
 .bv-pill.blue{background:#eef2ff;color:#1f2fc4}
 
 /* Table */
-.bv-tw{background:#fff;border:1px solid #eef0f7;border-radius:14px;overflow:hidden;
+.bv-tw{background:#fff;border:1px solid #eef0f7;border-radius:14px;overflow-x:auto;
   box-shadow:0 1px 2px rgba(11,18,48,.03)}
-.bv-tw table{width:100%;border-collapse:collapse;font-size:13.5px}
+.bv-tw table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:560px}
 .bv-tw thead th{text-align:left;font-size:11px;font-weight:700;color:#858cab;letter-spacing:.1em;
   padding:12px 16px;background:#f6f7fb;border-bottom:1px solid #eef0f7;text-transform:uppercase;white-space:nowrap}
 .bv-tw tbody td{padding:13px 16px;border-bottom:1px solid #eef0f7;color:#3a4267;vertical-align:middle}
@@ -144,18 +146,20 @@ const CSS = `
 
 /* Responsive */
 @media(max-width:700px){
-  .bv-kpis.c4{grid-template-columns:repeat(2,1fr)!important}
-  .bv-kpis.c3{grid-template-columns:repeat(2,1fr)!important}
+  .bv-kpis.c4{grid-template-columns:repeat(2,1fr)}
+  .bv-kpis.c3{grid-template-columns:repeat(2,1fr)}
   .bv-mkpis{grid-template-columns:repeat(2,1fr)}
   .bv-search-row{grid-template-columns:1fr}
   .bv-form-grid{grid-template-columns:1fr}
   .bv-form-grid .span2{grid-column:auto}
   .bv-title{font-size:20px}
+  .bv-rowcard-foot{flex-wrap:wrap;gap:6px}
+  .bv-rowcard-head{flex-wrap:wrap;gap:8px}
 }
 @media(max-width:480px){
-  .bv-kpis.c4{grid-template-columns:1fr!important}
-  .bv-tw{overflow-x:auto}
-  .bv-tw table{min-width:560px}
+  .bv-kpis.c4{grid-template-columns:1fr}
+  .bv-kpis.c3{grid-template-columns:1fr}
+  .bv-mkpis{grid-template-columns:1fr 1fr}
 }
 `;
 
@@ -245,13 +249,13 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
         })}
 
         <p className="bv-sec">Today's Totals</p>
-        <div className="bv-kpis c4" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+        <div className="bv-kpis c4" style={{}}>
           <div className="bv-kpi"><div className="bv-kpi-l">Orders Value</div><div className="bv-kpi-v">{fmtC(totalOrdersVal)}</div></div>
           <div className="bv-kpi"><div className="bv-kpi-l">Cash Collected</div><div className="bv-kpi-v ok">{fmtC(totalCash)}</div></div>
           <div className="bv-kpi"><div className="bv-kpi-l">POS Collected</div><div className="bv-kpi-v blue">{fmtC(totalPos)}</div></div>
           <div className="bv-kpi bad"><div className="bv-kpi-l">Branch Expenses</div><div className="bv-kpi-v">{fmtC(totalExp)}</div></div>
         </div>
-        <div className="bv-kpis c3" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 20 }}>
+        <div className="bv-kpis c3" style={{ marginBottom: 20 }}>
           <div className="bv-kpi accent"><div className="bv-kpi-l">Net Expected</div><div className="bv-kpi-v">{fmtC(totalNetExp)}</div><div className="bv-kpi-s">cash + POS − expenses</div></div>
           <div className="bv-kpi ok"><div className="bv-kpi-l">Cash Sent</div><div className="bv-kpi-v">{fmtC(totalSent)}</div><div className="bv-kpi-s">received in account</div></div>
           <div className={`bv-kpi ${totalStillToSend > 0 ? 'warn' : 'ok'}`}><div className="bv-kpi-l">Still to Send</div><div className="bv-kpi-v">{fmtC(Math.max(0, totalStillToSend))}</div><div className="bv-kpi-s">{totalStillToSend > 0 ? 'not yet received' : 'all balanced'}</div></div>
@@ -308,7 +312,7 @@ function BossBranches({ filterP, fmtC, cfg, db }) {
                   <div style={{ fontSize: 11.5, color: '#858cab', marginTop: 2 }}>{pct}% rate</div>
                 </div>
               </div>
-              <div className="bv-mkpis" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+              <div className="bv-mkpis" style={{}}>
                 <div className="bv-mk ok"><div className="bv-mk-l">Cash</div><div className="bv-mk-v">{fmtC(c.cash)}</div></div>
                 <div className="bv-mk blue"><div className="bv-mk-l">POS</div><div className="bv-mk-v">{fmtC(c.pos)}</div></div>
                 <div className="bv-mk"><div className="bv-mk-l">Net Expected</div><div className="bv-mk-v">{fmtC(c.netExpected)}</div></div>
@@ -588,7 +592,7 @@ function BossVendorPay({ fmtC, cfg, db }) {
       <style>{CSS}</style>
       <div className="pg-hd"><p className="pg-title">Vendor Payments</p><p className="pg-sub">Select a vendor to see breakdown & log a payment</p></div>
       <div className="pg-body">
-        <div className="bv-kpis c3" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 16 }}>
+        <div className="bv-kpis c3" style={{ marginBottom: 16 }}>
           <div className="bv-kpi"><div className="bv-kpi-l">Total Payable</div><div className="bv-kpi-v">{fmtC(totalPayable)}</div></div>
           <div className="bv-kpi ok"><div className="bv-kpi-l">Paid</div><div className="bv-kpi-v">{fmtC(totalPaid)}</div></div>
           <div className={`bv-kpi ${totalRem > 0 ? 'warn' : 'ok'}`}><div className="bv-kpi-l">Remaining</div><div className="bv-kpi-v">{fmtC(totalRem)}</div></div>
@@ -728,7 +732,7 @@ function BossInventory({ cfg, db }) {
       <div className="pg-hd"><p className="pg-title">Inventory</p><p className="pg-sub">All vendors · received at IDIMU · delivered across all branches</p></div>
       <div className="pg-body">
 
-        <div className="bv-kpis c3" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 16 }}>
+        <div className="bv-kpis c3" style={{ marginBottom: 16 }}>
           <div className="bv-kpi blue"><div className="bv-kpi-l">Total Received</div><div className="bv-kpi-v">{grandReceived}</div><div className="bv-kpi-s">into IDIMU warehouse</div></div>
           <div className="bv-kpi ok"><div className="bv-kpi-l">Total Delivered</div><div className="bv-kpi-v">{grandDelivered}</div><div className="bv-kpi-s">across all branches</div></div>
           <div className={`bv-kpi ${grandRemaining <= 0 ? 'bad' : ''}`}><div className="bv-kpi-l">Total Remaining</div><div className="bv-kpi-v">{grandRemaining}</div><div className="bv-kpi-s">{grandRemaining <= 0 ? 'out of stock' : 'in stock'}</div></div>

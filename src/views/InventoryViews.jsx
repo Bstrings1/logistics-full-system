@@ -16,7 +16,7 @@ const INV_CSS = `
   .inv2-chip.red   { background:#fee2e2; color:#b91c1c; }
 
   /* Branch tabs */
-  .inv2-branches { display:flex; gap:5px; align-items:center; background:#fff; border:1px solid #eef0f7; padding:5px; border-radius:12px; width:fit-content; margin-bottom:22px; flex-wrap:wrap; }
+  .inv2-branches { display:flex; gap:5px; align-items:center; background:#fff; border:1px solid #eef0f7; padding:5px; border-radius:12px; width:fit-content; max-width:100%; margin-bottom:22px; flex-wrap:wrap; overflow-x:auto; }
   .inv2-branch-btn { display:flex; align-items:center; gap:7px; padding:7px 13px; border-radius:8px; font-size:13px; font-weight:600; border:0; cursor:pointer; transition:all .15s; }
   .inv2-branch-btn.active  { background:#2a3ef0; color:#fff; box-shadow:0 4px 10px -4px rgba(42,62,240,.4); }
   .inv2-branch-btn.inactive{ background:transparent; color:#3a4267; }
@@ -43,7 +43,8 @@ const INV_CSS = `
   .inv2-strip-unit { color:rgba(255,255,255,.4); font-size:13px; font-weight:500; }
 
   /* Table wrap */
-  .inv2-table-wrap { background:#fff; border:1px solid #eef0f7; border-radius:16px; overflow:hidden; }
+  .inv2-table-wrap { background:#fff; border:1px solid #eef0f7; border-radius:16px; overflow-x:auto; }
+  .inv2 table.inv2-t { min-width:640px; }
   .inv2-table-head { display:flex; align-items:center; gap:14px; padding:16px 18px; border-bottom:1px solid #eef0f7; flex-wrap:wrap; }
   .inv2-search { position:relative; flex:1; max-width:280px; }
   .inv2-search input { width:100%; height:36px; padding:0 12px 0 34px; border:1px solid #d9ddea; border-radius:9px; background:#fff; font:inherit; font-size:13px; outline:none; color:#0b1230; }
@@ -125,6 +126,14 @@ const INV_CSS = `
     .inv2-form-grid { grid-template-columns:1fr; }
     .inv2-wide { grid-column:auto; }
     .inv2-filter-bar { grid-template-columns:1fr; }
+    .inv2-page-title { font-size:18px; }
+    .inv2-topbar { flex-direction:column; gap:10px; }
+    .inv2-top-actions { flex-wrap:wrap; }
+  }
+  @media (max-width:480px) {
+    .inv2-kpis { grid-template-columns:1fr; }
+    .inv2-table-head { flex-direction:column; align-items:stretch; }
+    .inv2-search { max-width:100%; }
   }
 `;
 
