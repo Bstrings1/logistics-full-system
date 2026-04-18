@@ -1,17 +1,187 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, calcBonus, bonusRate, getTabs, ot, gp, REVENUE_STATUSES, TODAY } from '../utils/helpers';
-import { Av, Badge, SBadge } from '../components/ui';
+import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, calcBonus, bonusRate, ot, gp, REVENUE_STATUSES, TODAY } from '../utils/helpers';
 import DateFilter from '../components/DateFilter';
+
+const CSS = `
+.bv *{box-sizing:border-box}
+.bv{font-family:'Plus Jakarta Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+
+/* Page shell */
+.bv-topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap}
+.bv-title{font-size:24px;font-weight:700;letter-spacing:-.5px;color:#0b1230;margin:0}
+.bv-sub{font-size:13.5px;color:#5b6385;margin-top:4px}
+.bv-sec{font-size:11px;font-weight:700;color:#858cab;letter-spacing:.12em;text-transform:uppercase;margin:20px 0 10px}
+
+/* KPI cards */
+.bv-kpis{display:grid;gap:12px;margin-bottom:16px}
+.bv-kpi{background:#fff;border:1px solid #eef0f7;border-radius:14px;padding:16px 18px;
+  box-shadow:0 1px 2px rgba(11,18,48,.03)}
+.bv-kpi-l{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#858cab}
+.bv-kpi-v{font-size:21px;font-weight:700;margin-top:6px;font-family:'JetBrains Mono',monospace;color:#0b1230;font-variant-numeric:tabular-nums}
+.bv-kpi-s{font-size:12px;color:#858cab;margin-top:3px}
+.bv-kpi.ok .bv-kpi-v{color:#1fa67a}
+.bv-kpi.bad .bv-kpi-v{color:#e0425a}
+.bv-kpi.warn .bv-kpi-v{color:#e89b2f}
+.bv-kpi.blue .bv-kpi-v{color:#1f2fc4}
+.bv-kpi.accent{background:#eef2ff;border-color:#e0e7ff}
+.bv-kpi.accent .bv-kpi-l{color:#1f2fc4}
+.bv-kpi.accent .bv-kpi-v{color:#1f2fc4}
+.bv-kpi.accent .bv-kpi-s{color:#3b54ff;opacity:.7}
+
+/* Rowcard */
+.bv-rowcard{background:#fff;border:1px solid #eef0f7;border-radius:14px;margin-bottom:12px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(11,18,48,.03)}
+.bv-rowcard-head{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #eef0f7}
+.bv-b-av{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:14px;flex-shrink:0}
+.bv-b-av.c0{background:#dcfce7;color:#15803d}
+.bv-b-av.c1{background:#eef2ff;color:#1f2fc4}
+.bv-b-av.c2{background:#fee2e2;color:#b91c1c}
+.bv-b-av.c3{background:#fef3c7;color:#a16207}
+.bv-b-name{font-size:15px;font-weight:700;color:#0b1230}
+.bv-b-meta{font-size:12.5px;color:#5b6385;margin-top:1px}
+.bv-b-side{margin-left:auto;text-align:right}
+
+/* Minikpis */
+.bv-mkpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 18px;border-bottom:1px solid #eef0f7}
+.bv-mk{background:#f6f7fb;border:1px solid #eef0f7;border-radius:10px;padding:10px 12px}
+.bv-mk-l{font-size:10px;font-weight:700;color:#858cab;letter-spacing:.1em;text-transform:uppercase}
+.bv-mk-v{font-size:15px;font-weight:700;margin-top:4px;font-family:'JetBrains Mono',monospace;color:#0b1230;font-variant-numeric:tabular-nums}
+.bv-mk.ok .bv-mk-v{color:#1fa67a}
+.bv-mk.bad .bv-mk-v{color:#e0425a}
+.bv-mk.blue .bv-mk-v{color:#1f2fc4}
+
+/* Rowcard footer */
+.bv-rowcard-foot{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;
+  font-size:12.5px;color:#5b6385;border-top:1px dashed #eef0f7}
+.bv-rowcard-foot b{color:#0b1230;font-weight:700}
+
+/* Status blip */
+.bv-blip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
+.bv-blip::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor}
+.bv-blip.ok{color:#1fa67a}
+.bv-blip.warn{color:#e89b2f}
+.bv-blip.bad{color:#e0425a}
+
+/* Pill */
+.bv-pill{display:inline-flex;align-items:center;font-size:11px;font-weight:700;letter-spacing:.04em;
+  padding:3px 10px;border-radius:999px;text-transform:uppercase}
+.bv-pill.g{background:#dcfce7;color:#15803d}
+.bv-pill.a{background:#fef3c7;color:#a16207}
+.bv-pill.r{background:#fee2e2;color:#b91c1c}
+.bv-pill.b{background:#eef0f7;color:#5b6385}
+.bv-pill.blue{background:#eef2ff;color:#1f2fc4}
+
+/* Table */
+.bv-tw{background:#fff;border:1px solid #eef0f7;border-radius:14px;overflow:hidden;
+  box-shadow:0 1px 2px rgba(11,18,48,.03)}
+.bv-tw table{width:100%;border-collapse:collapse;font-size:13.5px}
+.bv-tw thead th{text-align:left;font-size:11px;font-weight:700;color:#858cab;letter-spacing:.1em;
+  padding:12px 16px;background:#f6f7fb;border-bottom:1px solid #eef0f7;text-transform:uppercase;white-space:nowrap}
+.bv-tw tbody td{padding:13px 16px;border-bottom:1px solid #eef0f7;color:#3a4267;vertical-align:middle}
+.bv-tw tbody tr:last-child td{border-bottom:0}
+.bv-tw tbody tr:hover{background:#f6f7fb}
+.bv-mono{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#5b6385}
+.bv-money{font-family:'JetBrains Mono',monospace;font-weight:700;font-variant-numeric:tabular-nums}
+.bv-money.ok{color:#1fa67a}
+.bv-money.bad{color:#e0425a}
+.bv-money.warn{color:#e89b2f}
+.bv-money.blue{color:#1f2fc4}
+.bv-muted{color:#858cab}
+
+/* Branch tab strip */
+.bv-tabs{display:inline-flex;background:#fff;border:1px solid #eef0f7;border-radius:10px;padding:4px;margin-bottom:16px;gap:0}
+.bv-tab{border:0;background:transparent;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;
+  color:#5b6385;padding:7px 16px;border-radius:7px;transition:all .12s}
+.bv-tab:hover{color:#0b1230}
+.bv-tab.on{background:#2a3ef0;color:#fff;box-shadow:0 2px 8px -3px rgba(42,62,240,.5)}
+
+/* Vgroup (inventory) */
+.bv-vg{background:#fff;border:1px solid #eef0f7;border-radius:14px;margin-bottom:14px;overflow:hidden}
+.bv-vg-head{padding:12px 18px;border-bottom:1px solid #eef0f7;font-size:11px;font-weight:700;
+  color:#5b6385;letter-spacing:.1em;text-transform:uppercase;background:#f6f7fb}
+
+/* Search row */
+.bv-search-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.bv-input-wrap{display:flex;align-items:center;background:#fff;border:1.5px solid #d9ddea;border-radius:10px;transition:border-color .15s}
+.bv-input-wrap:focus-within{border-color:#3b54ff;box-shadow:0 0 0 3px rgba(59,84,255,.12)}
+.bv-input-wrap svg{width:36px;flex-shrink:0;color:#858cab;display:grid;place-items:center;padding:0 10px}
+.bv-input-wrap input{flex:1;border:0;outline:0;background:transparent;padding:10px 12px 10px 0;font:inherit;font-size:14px;color:#0b1230}
+
+/* Btn */
+.bv-btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:9px;font:inherit;
+  font-weight:600;font-size:13px;cursor:pointer;transition:all .12s;border:1.5px solid #d9ddea;background:#fff;color:#3a4267}
+.bv-btn:hover{border-color:#b4bace;background:#f6f7fb}
+.bv-btn.primary{background:linear-gradient(180deg,#3b54ff,#2a3ef0);color:#fff;border:0;
+  box-shadow:0 5px 14px -5px rgba(42,62,240,.5)}
+.bv-btn.primary:hover{filter:brightness(1.06)}
+.bv-btn.amber{background:#fef3c7;color:#a16207;border-color:#fde68a}
+.bv-btn.amber:hover{background:#fde68a}
+
+/* Form */
+.bv-form-panel{background:#fff;border:1px solid #eef0f7;border-radius:14px;padding:22px}
+.bv-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 20px}
+.bv-form-grid .span2{grid-column:span 2}
+.bv-lbl{font-size:12px;font-weight:600;color:#1f2747;letter-spacing:.02em;display:block;margin-bottom:5px}
+.bv-inp{width:100%;border:1.5px solid #d9ddea;border-radius:9px;padding:10px 12px;font:inherit;font-size:14px;
+  color:#0b1230;outline:0;transition:border-color .15s}
+.bv-inp:focus{border-color:#3b54ff;box-shadow:0 0 0 3px rgba(59,84,255,.12)}
+.bv-sel{appearance:none;-webkit-appearance:none;background:#fff url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23858cab' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;padding-right:32px;cursor:pointer}
+
+/* Callout */
+.bv-callout{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;background:#eff6ff;border:1px solid #dbeafe;border-radius:10px;font-size:13px;color:#1e40af;font-weight:500;margin-bottom:14px}
+.bv-callout.red{background:#fff1f2;border-color:#fecdd3;color:#be123c}
+
+/* Empty */
+.bv-empty{padding:32px;text-align:center;color:#858cab;font-size:13.5px}
+
+/* Prog bar */
+.bv-prog{height:5px;background:#eef0f7;border-radius:99px;overflow:hidden;margin-bottom:4px}
+.bv-prog-fill{height:100%;border-radius:99px;background:#2a3ef0;transition:width .3s}
+
+/* Loan card */
+.bv-loan{background:#fff;border:1px solid #eef0f7;border-radius:14px;padding:18px 20px;margin-bottom:10px}
+
+/* Responsive */
+@media(max-width:700px){
+  .bv-kpis.c4{grid-template-columns:repeat(2,1fr)!important}
+  .bv-kpis.c3{grid-template-columns:repeat(2,1fr)!important}
+  .bv-mkpis{grid-template-columns:repeat(2,1fr)}
+  .bv-search-row{grid-template-columns:1fr}
+  .bv-form-grid{grid-template-columns:1fr}
+  .bv-form-grid .span2{grid-column:auto}
+  .bv-title{font-size:20px}
+}
+@media(max-width:480px){
+  .bv-kpis.c4{grid-template-columns:1fr!important}
+  .bv-tw{overflow-x:auto}
+  .bv-tw table{min-width:560px}
+}
+`;
 
 function useFP() {
   const { period, rangeFrom, rangeTo } = useApp();
   return list => filterPeriod(list, period, rangeFrom, rangeTo);
 }
-
 function useFmt() {
   const { cfg } = useApp();
   return n => fmt(n, cfg.currency);
+}
+
+const AV_COLORS = ['c0','c1','c2','c3'];
+function branchColor(branches, b) {
+  const idx = branches.indexOf(b);
+  return AV_COLORS[idx % AV_COLORS.length];
+}
+
+function Pill({ children, type = 'b' }) {
+  return <span className={`bv-pill ${type}`}>{children}</span>;
+}
+function Blip({ type = 'ok', children }) {
+  return <span className={`bv-blip ${type}`}>{children}</span>;
+}
+function Money({ children, tone = '', big }) {
+  return <span className={`bv-money${tone ? ' ' + tone : ''}${big ? ' bv-money-big' : ''}`}>{children}</span>;
 }
 
 export default function BossViews({ tabId }) {
@@ -19,18 +189,20 @@ export default function BossViews({ tabId }) {
   const filterP = useFP();
   const fmtC = useFmt();
 
-  if (tabId === 'overview') return <BossOverview filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} setActiveTab={setActiveTab} />;
-  if (tabId === 'branches') return <BossBranches filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
-  if (tabId === 'orders') return <BossOrders filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
-  if (tabId === 'riders') return <BossRiders fmtC={fmtC} cfg={cfg} db={db} />;
-  if (tabId === 'remittances') return <BossRemittances filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
-  if (tabId === 'vendor-pay') return <BossVendorPay fmtC={fmtC} cfg={cfg} db={db} />;
-  if (tabId === 'inventory') return <BossInventory cfg={cfg} db={db} />;
-  if (tabId === 'tools') return <BossTools setActiveTab={setActiveTab} cfg={cfg} />;
-  if (tabId === 'dfees') return <BossDeliveryFees fmtC={fmtC} cfg={cfg} db={db} setActiveTab={setActiveTab} />;
-  if (tabId === 'loans') return <BossLoans fmtC={fmtC} db={db} setActiveTab={setActiveTab} />;
+  if (tabId === 'overview')    return <BossOverview     filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} setActiveTab={setActiveTab} />;
+  if (tabId === 'branches')    return <BossBranches     filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
+  if (tabId === 'orders')      return <BossOrders       filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
+  if (tabId === 'riders')      return <BossRiders       fmtC={fmtC} cfg={cfg} db={db} />;
+  if (tabId === 'remittances') return <BossRemittances  filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
+  if (tabId === 'vendor-pay')  return <BossVendorPay    fmtC={fmtC} cfg={cfg} db={db} />;
+  if (tabId === 'inventory')   return <BossInventory    cfg={cfg} db={db} />;
+  if (tabId === 'tools')       return <BossTools        setActiveTab={setActiveTab} cfg={cfg} />;
+  if (tabId === 'dfees')       return <BossDeliveryFees fmtC={fmtC} cfg={cfg} db={db} setActiveTab={setActiveTab} />;
+  if (tabId === 'loans')       return <BossLoans        fmtC={fmtC} db={db} setActiveTab={setActiveTab} />;
   return null;
 }
+
+// ─── Overview ─────────────────────────────────────────────────────────────────
 
 function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
   let totalOrdersVal = 0, totalCash = 0, totalPos = 0, totalExp = 0, totalNetExp = 0, totalSent = 0, totalStillToSend = 0;
@@ -40,76 +212,83 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
     totalExp += c.exp; totalNetExp += c.netExpected; totalSent += c.sent; totalStillToSend += c.stillToSend;
   });
   const shortfallPays = Object.values(db.payments).filter(p => p.shortfall && p.shortfall > 0);
-  const cols = [['#e8f5e9','#388e3c'],['#e3f2fd','#1565c0'],['#fce4ec','#c62828']];
 
   return (
-    <>
+    <div className="bv">
+      <style>{CSS}</style>
       <div className="pg-hd"><p className="pg-title">Overview</p><p className="pg-sub">All branches at a glance</p></div>
       <div className="pg-body">
         <DateFilter />
-        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 10 }}>Remittance Status</p>
-        <div className="mb20">
-          {cfg.branches.map((b, idx) => {
-            const c = branchCalc(b, cfg, db, filterP);
-            const allSent = c.stillToSend <= 0 && c.sent > 0;
-            const [bg, fg] = cols[idx % cols.length];
-            return (
-              <div key={b} className={`branch-status-card ${allSent ? 'card-green' : c.shortfall > 0 ? 'card-red' : ''}`}>
-                <div className="bsc-icon" style={{ background: bg, color: fg }}>{b[0]}</div>
-                <div className="bsc-main">
-                  <p className="bsc-name">{b}</p>
-                  <p className="bsc-sub">{c.delivered} orders · {fmtC(c.ordersVal)} collected</p>
+
+        <p className="bv-sec">Remittance Status</p>
+        {cfg.branches.map((b, idx) => {
+          const c = branchCalc(b, cfg, db, filterP);
+          const allSent = c.stillToSend <= 0 && c.sent > 0;
+          return (
+            <div key={b} className="bv-rowcard" style={{ padding: '14px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div className={`bv-b-av ${branchColor(cfg.branches, b)}`}>{b[0]}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="bv-b-name">{b}</div>
+                  <div className="bv-b-meta">{c.delivered} orders · {fmtC(c.cash + c.pos)} collected</div>
                 </div>
-                <div className="bsc-right">
-                  {allSent && !c.shortfall ? (
-                    <><p style={{ color: 'var(--green)', fontWeight: 600, fontSize: 13 }}>✓ All Sent</p><p style={{ fontSize: 11, color: 'var(--t4)' }}>{fmtC(c.sent)} sent</p></>
-                  ) : c.shortfall > 0 ? (
-                    <><p style={{ color: 'var(--red)', fontWeight: 700, fontSize: 13 }}>⚠ Shortfall</p><p style={{ fontSize: 11, color: 'var(--red)' }}>{fmtC(c.shortfall)} unpaid</p></>
-                  ) : (
-                    <><p style={{ color: 'var(--amber)', fontWeight: 600, fontSize: 13 }}>Pending</p><p style={{ fontSize: 11, color: 'var(--t4)' }}>{fmtC(c.stillToSend)} to send</p></>
-                  )}
+                <div style={{ textAlign: 'right' }}>
+                  {allSent && !c.shortfall
+                    ? <><Blip type="ok">Confirmed</Blip><div style={{ fontSize: 11.5, color: '#858cab', marginTop: 2 }}>{fmtC(c.sent)} sent</div></>
+                    : c.shortfall > 0
+                      ? <><Blip type="bad">Shortfall</Blip><div style={{ fontSize: 11.5, color: '#e0425a', marginTop: 2 }}>{fmtC(c.shortfall)} unpaid</div></>
+                      : <><Blip type="warn">Pending</Blip><div style={{ fontSize: 11.5, color: '#858cab', marginTop: 2 }}>{fmtC(c.stillToSend)} to send</div></>}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
 
-        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 10 }}>Today's Totals</p>
-        <div className="navy-hero mb20">
-          <div className="mini-grid">
-            <div className="mini-card"><p className="mini-l">Orders Value</p><p className="mini-v" style={{ color: '#93c5fd' }}>{fmtC(totalOrdersVal)}</p></div>
-            <div className="mini-card"><p className="mini-l">Cash Collected</p><p className="mini-v" style={{ color: '#fff' }}>{fmtC(totalCash)}</p></div>
-            <div className="mini-card"><p className="mini-l">POS Collected</p><p className="mini-v" style={{ color: '#6ee7b7' }}>{fmtC(totalPos)}</p></div>
-            <div className="mini-card"><p className="mini-l">Branch Expenses</p><p className="mini-v" style={{ color: '#fca5a5' }}>{fmtC(totalExp)}</p></div>
-          </div>
-          <div className="bottom-strip">
-            <div className="bs-cell"><p className="bs-l">Net Expected</p><p className="bs-v">{fmtC(totalNetExp)}</p></div>
-            <div className="bs-cell"><p className="bs-l">Cash Sent</p><p className="bs-v" style={{ color: '#6ee7b7' }}>{fmtC(totalSent)}</p></div>
-            <div className="bs-cell"><p className="bs-l">Still to Send</p><p className="bs-v" style={{ color: totalStillToSend > 0 ? '#fca5a5' : '#6ee7b7' }}>{fmtC(totalStillToSend)}</p></div>
-          </div>
+        <p className="bv-sec">Today's Totals</p>
+        <div className="bv-kpis c4" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+          <div className="bv-kpi"><div className="bv-kpi-l">Orders Value</div><div className="bv-kpi-v">{fmtC(totalOrdersVal)}</div></div>
+          <div className="bv-kpi"><div className="bv-kpi-l">Cash Collected</div><div className="bv-kpi-v ok">{fmtC(totalCash)}</div></div>
+          <div className="bv-kpi"><div className="bv-kpi-l">POS Collected</div><div className="bv-kpi-v blue">{fmtC(totalPos)}</div></div>
+          <div className="bv-kpi bad"><div className="bv-kpi-l">Branch Expenses</div><div className="bv-kpi-v">{fmtC(totalExp)}</div></div>
+        </div>
+        <div className="bv-kpis c3" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 20 }}>
+          <div className="bv-kpi accent"><div className="bv-kpi-l">Net Expected</div><div className="bv-kpi-v">{fmtC(totalNetExp)}</div><div className="bv-kpi-s">cash + POS − expenses</div></div>
+          <div className="bv-kpi ok"><div className="bv-kpi-l">Cash Sent</div><div className="bv-kpi-v">{fmtC(totalSent)}</div><div className="bv-kpi-s">received in account</div></div>
+          <div className={`bv-kpi ${totalStillToSend > 0 ? 'warn' : 'ok'}`}><div className="bv-kpi-l">Still to Send</div><div className="bv-kpi-v">{fmtC(Math.max(0, totalStillToSend))}</div><div className="bv-kpi-s">{totalStillToSend > 0 ? 'not yet received' : 'all balanced'}</div></div>
         </div>
 
         {shortfallPays.length > 0 && (
           <>
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 10 }}>Outstanding Riders</p>
-            {shortfallPays.map((p, i) => (
-              <div key={i} className="outstanding-row">
-                <Av name={p.rider || '?'} size={34} />
-                <div className="or-info"><p className="or-name">{p.rider}</p><p className="or-sub">{p.branch} · {p.date}</p></div>
-                <p className="or-amount">{fmtC(p.shortfall)}</p>
-              </div>
-            ))}
+            <p className="bv-sec" style={{ color: '#e0425a' }}>Outstanding Riders</p>
+            <div className="bv-tw">
+              <table>
+                <thead><tr><th>Rider</th><th>Branch</th><th>Date</th><th style={{ textAlign: 'right' }}>Shortfall</th></tr></thead>
+                <tbody>
+                  {shortfallPays.map((p, i) => (
+                    <tr key={i}>
+                      <td style={{ fontWeight: 600 }}>{p.rider}</td>
+                      <td><Pill>{p.branch}</Pill></td>
+                      <td className="bv-mono">{p.date}</td>
+                      <td style={{ textAlign: 'right' }}><Money tone="bad">{fmtC(p.shortfall)}</Money></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
+// ─── Branches ─────────────────────────────────────────────────────────────────
+
 function BossBranches({ filterP, fmtC, cfg, db }) {
   return (
-    <>
-      <div className="pg-hd"><p className="pg-title">Branches</p></div>
+    <div className="bv">
+      <style>{CSS}</style>
+      <div className="pg-hd"><p className="pg-title">Branches</p><p className="pg-sub">Per-branch cash position & delivery rate</p></div>
       <div className="pg-body">
         <DateFilter />
         {cfg.branches.map(b => {
@@ -117,106 +296,148 @@ function BossBranches({ filterP, fmtC, cfg, db }) {
           const allOrds = filterP(db.orders.filter(o => o.branch === b));
           const pct = allOrds.length ? Math.round((c.delivered / allOrds.length) * 100) : 0;
           return (
-            <div key={b} className="branch-card">
-              <div className="bc-head">
-                <div className="row" style={{ gap: 12 }}>
-                  <div className="bc-icon">{b[0]}</div>
-                  <div><p style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-.02em' }}>{b}</p><p style={{ fontSize: 12, color: 'var(--t4)' }}>{c.riders.length} riders</p></div>
+            <div key={b} className="bv-rowcard">
+              <div className="bv-rowcard-head">
+                <div className={`bv-b-av ${branchColor(cfg.branches, b)}`}>{b[0]}</div>
+                <div>
+                  <div className="bv-b-name">{b}</div>
+                  <div className="bv-b-meta">{c.riders.length} riders</div>
                 </div>
-                <div className="row" style={{ gap: 8 }}>
-                  {c.shortfall > 0 && <span style={{ background: '#fef2f2', color: 'var(--red)', border: '1px solid var(--red-bd)', borderRadius: 99, padding: '3px 12px', fontSize: 12, fontWeight: 700 }}>Over {fmtC(c.shortfall)}</span>}
-                  <span style={{ fontSize: 12, color: 'var(--t3)' }}>{c.delivered}/{allOrds.length} delivered</span>
+                <div className="bv-b-side">
+                  <div style={{ fontWeight: 700, color: '#0b1230', fontSize: 14 }}>{c.delivered}/{allOrds.length} delivered</div>
+                  <div style={{ fontSize: 11.5, color: '#858cab', marginTop: 2 }}>{pct}% rate</div>
                 </div>
               </div>
-              <div className="branch-card mini-stats">
-                <div className="ms"><p className="ms-l">Cash Collected</p><p className="ms-v" style={{ color: 'var(--blue)' }}>{fmtC(c.cash)}</p></div>
-                <div className="ms"><p className="ms-l">POS Collected</p><p className="ms-v" style={{ color: 'var(--green)' }}>{fmtC(c.pos)}</p></div>
-                <div className="ms"><p className="ms-l">Net Expected</p><p className="ms-v">{fmtC(c.netExpected)}</p></div>
-                <div className="ms"><p className="ms-l">Cash Sent</p><p className="ms-v">{fmtC(c.sent)}</p></div>
+              <div className="bv-mkpis" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+                <div className="bv-mk ok"><div className="bv-mk-l">Cash</div><div className="bv-mk-v">{fmtC(c.cash)}</div></div>
+                <div className="bv-mk blue"><div className="bv-mk-l">POS</div><div className="bv-mk-v">{fmtC(c.pos)}</div></div>
+                <div className="bv-mk"><div className="bv-mk-l">Net Expected</div><div className="bv-mk-v">{fmtC(c.netExpected)}</div></div>
+                <div className="bv-mk ok"><div className="bv-mk-l">Cash Sent</div><div className="bv-mk-v">{fmtC(c.sent)}</div></div>
               </div>
-              <div className="prog mb4"><div className="prog-fill" style={{ width: `${pct}%`, background: 'var(--purple)' }} /></div>
-              <p style={{ fontSize: 11, color: 'var(--t4)', marginBottom: 0 }}>{pct}% delivery rate</p>
-              <div className="bc-foot">
-                <span>Branch expenses: <strong style={{ color: 'var(--red)' }}>{fmtC(c.exp)}</strong></span>
-                <span>Bonus payable: <strong>{fmtC(c.bonus)}</strong></span>
+              <div style={{ padding: '10px 18px 14px' }}>
+                <div className="bv-prog"><div className="bv-prog-fill" style={{ width: `${pct}%` }} /></div>
+                <div style={{ fontSize: 11, color: '#858cab', marginTop: 3 }}>{pct}% delivery rate</div>
+              </div>
+              <div className="bv-rowcard-foot">
+                <div>Expenses: <b style={{ color: '#e0425a' }}>{fmtC(c.exp)}</b></div>
+                <div>Bonus payable: <b>{fmtC(c.bonus)}</b></div>
+                {c.shortfall > 0 && <div style={{ color: '#e0425a', fontWeight: 700 }}>⚠ Shortfall: {fmtC(c.shortfall)}</div>}
               </div>
             </div>
           );
         })}
       </div>
-    </>
+    </div>
   );
+}
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+const STATUS_PILL = {
+  delivered:    <span className="bv-pill g">Delivered</span>,
+  pending:      <span className="bv-pill a">Pending</span>,
+  'in-transit': <span className="bv-pill blue">In transit</span>,
+  cancelled:    <span className="bv-pill r">Cancelled</span>,
+  failed:       <span className="bv-pill r">Failed</span>,
+  replaced:     <span className="bv-pill a">Replaced</span>,
+};
+
+function statusPill(s) {
+  return STATUS_PILL[s?.toLowerCase()] || <span className="bv-pill b">{s}</span>;
 }
 
 function BossOrders({ filterP, fmtC, cfg, db }) {
   const all = filterP(db.orders);
+  const total = all.reduce((s, o) => s + ot(o), 0);
   return (
-    <>
-      <div className="pg-hd"><p className="pg-title">All Orders</p><p className="pg-sub">{all.length} in period</p></div>
+    <div className="bv">
+      <style>{CSS}</style>
+      <div className="pg-hd"><p className="pg-title">All Orders</p><p className="pg-sub">{all.length} orders in period · {fmtC(total)} total value</p></div>
       <div className="pg-body">
         <DateFilter />
-        <div className="card">
-          <table className="tbl">
-            <thead><tr><th>Customer</th><th>Rider</th><th>Branch</th><th>Status</th><th>Value</th><th>Date</th></tr></thead>
+        <div className="bv-tw">
+          <table>
+            <thead>
+              <tr><th>Customer</th><th>Rider</th><th>Branch</th><th>Status</th><th style={{ textAlign: 'right' }}>Value</th><th>Date</th></tr>
+            </thead>
             <tbody>
               {all.length ? all.map(o => (
                 <tr key={o.id}>
-                  <td><div className="row" style={{ gap: 8 }}><Av name={o.rider || '?'} size={24} /><div><p style={{ fontWeight: 500 }}>{o.customerName}</p><p style={{ fontSize: 11, color: 'var(--t4)' }}>{o.phone}</p></div></div></td>
-                  <td><p style={{ fontSize: 12 }}>{o.rider || '—'}</p></td>
-                  <td><Badge text={o.branch} type="gray" /></td>
-                  <td><SBadge status={o.status} /></td>
-                  <td><p style={{ fontWeight: 600 }}>{fmtC(ot(o))}</p></td>
-                  <td><p style={{ fontSize: 11, color: 'var(--t4)' }}>{o.date}</p></td>
+                  <td>
+                    <div style={{ fontWeight: 600, color: '#0b1230' }}>{o.customerName}</div>
+                    <div className="bv-mono" style={{ marginTop: 2 }}>{o.phone}</div>
+                  </td>
+                  <td style={{ color: o.rider ? '#3a4267' : '#858cab' }}>{o.rider || '—'}</td>
+                  <td><Pill>{o.branch}</Pill></td>
+                  <td>{statusPill(o.status)}</td>
+                  <td style={{ textAlign: 'right' }}><Money>{fmtC(ot(o))}</Money></td>
+                  <td className="bv-mono">{o.date}</td>
                 </tr>
               )) : (
-                <tr><td colSpan={6}><div className="empty-box"><p className="empty-t">No orders</p></div></td></tr>
+                <tr><td colSpan={6}><div className="bv-empty">No orders in this period</div></td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
+// ─── Riders ───────────────────────────────────────────────────────────────────
+
 function BossRiders({ fmtC, cfg, db }) {
   return (
-    <>
-      <div className="pg-hd"><p className="pg-title">Riders & Bonus</p></div>
+    <div className="bv">
+      <style>{CSS}</style>
+      <div className="pg-hd"><p className="pg-title">Riders & Bonus</p><p className="pg-sub">Cycle: 14th → 15th next month · auto-calculated</p></div>
       <div className="pg-body">
         {cfg.branches.map(b => {
           const riders = db.riders[b] || [];
-          const total = riders.reduce((s, n) => s + calcBonus(getBonusCycleOrders(n, db).length, n, cfg), 0);
+          const total = riders.reduce((s, name) => s + calcBonus(getBonusCycleOrders(name, db).length, name, cfg), 0);
           return (
-            <div key={b} className="card mb12">
-              <div className="row-b mb14">
-                <p style={{ fontSize: 14, fontWeight: 700 }}>{b}</p>
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--purple)' }}>{fmtC(total)} bonus</span>
+            <div key={b} className="bv-rowcard" style={{ padding: 0 }}>
+              <div className="bv-rowcard-head">
+                <div className={`bv-b-av ${branchColor(cfg.branches, b)}`}>{b[0]}</div>
+                <div>
+                  <div className="bv-b-name">{b}</div>
+                  <div className="bv-b-meta">{riders.length} riders · cycle 14th → 15th</div>
+                </div>
+                <div className="bv-b-side">
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#858cab' }}>Total Bonus</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: '#1fa67a', fontFamily: "'JetBrains Mono',monospace", marginTop: 3 }}>{fmtC(total)}</div>
+                </div>
               </div>
-              <p style={{ fontSize: 11, color: 'var(--t4)', marginBottom: 10 }}>Cycle: 14th → 15th next month</p>
-              <table className="tbl">
-                <thead><tr><th>Rider</th><th>Cycle Deliveries</th><th>Rate</th><th>Bonus</th></tr></thead>
-                <tbody>
-                  {riders.map(name => {
-                    const cc = getBonusCycleOrders(name, db).length;
-                    return (
-                      <tr key={name}>
-                        <td><div className="row" style={{ gap: 9 }}><Av name={name} size={26} /><p style={{ fontWeight: 500 }}>{name}</p></div></td>
-                        <td><p style={{ fontWeight: 600 }}>{cc}</p></td>
-                        <td><p style={{ fontSize: 12, color: 'var(--t3)' }}>{fmtC(bonusRate(cc, name, cfg))}/order</p></td>
-                        <td><p style={{ fontWeight: 700, color: 'var(--purple)' }}>{fmtC(calcBonus(cc, name, cfg))}</p></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              {riders.length === 0
+                ? <div className="bv-empty">No riders in this branch</div>
+                : <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none' }}>
+                    <table>
+                      <thead><tr><th>Rider</th><th style={{ textAlign: 'right' }}>Cycle Deliveries</th><th style={{ textAlign: 'right' }}>Rate</th><th style={{ textAlign: 'right' }}>Bonus</th></tr></thead>
+                      <tbody>
+                        {riders.map(name => {
+                          const cc = getBonusCycleOrders(name, db).length;
+                          return (
+                            <tr key={name}>
+                              <td style={{ fontWeight: 600 }}>{name}</td>
+                              <td style={{ textAlign: 'right' }} className="bv-mono">{cc}</td>
+                              <td style={{ textAlign: 'right' }} className="bv-mono">{fmtC(bonusRate(cc, name, cfg))}/order</td>
+                              <td style={{ textAlign: 'right' }}><Money tone="ok">{fmtC(calcBonus(cc, name, cfg))}</Money></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+              }
             </div>
           );
         })}
       </div>
-    </>
+    </div>
   );
 }
+
+// ─── Remittances ──────────────────────────────────────────────────────────────
 
 function BossRemittances({ filterP, fmtC, cfg, db }) {
   const { setDb } = useApp();
@@ -229,7 +450,8 @@ function BossRemittances({ filterP, fmtC, cfg, db }) {
   }
 
   return (
-    <>
+    <div className="bv">
+      <style>{CSS}</style>
       <div className="pg-hd"><p className="pg-title">Remittances & Fraud Watch</p><p className="pg-sub">Verify each transfer after confirming in your bank</p></div>
       <div className="pg-body">
         <DateFilter />
@@ -238,70 +460,81 @@ function BossRemittances({ filterP, fmtC, cfg, db }) {
           const rems = filterP(db.remittances.filter(r => r.branch === b));
           const shortPays = Object.values(db.payments).filter(p => p.branch === b && p.shortfall > 0);
           const unverified = rems.filter(r => !r.verified).length;
+          const balanced = c.stillToSend <= 0;
           return (
-            <div key={b} className="card mb14">
-              <div className="row-b mb14">
-                <div>
-                  <p style={{ fontSize: 15, fontWeight: 700 }}>{b} Branch</p>
-                  {unverified > 0 && <p style={{ fontSize: 11, color: 'var(--amber)', marginTop: 2 }}>⏳ {unverified} transfer{unverified > 1 ? 's' : ''} awaiting your verification</p>}
+            <div key={b} className="bv-rowcard" style={{ padding: 0 }}>
+              <div className="bv-rowcard-head">
+                <div className={`bv-b-av ${branchColor(cfg.branches, b)}`}>{b[0]}</div>
+                <div style={{ flex: 1 }}>
+                  <div className="bv-b-name">{b} Branch</div>
+                  <div className="bv-b-meta">{c.delivered} delivered · {c.riders.length} riders{unverified > 0 ? ` · ⏳ ${unverified} awaiting verification` : ''}</div>
                 </div>
-                {c.stillToSend > 0
-                  ? <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--red)' }}>⚠ Owes {fmtC(c.stillToSend)}</span>
-                  : <Badge text="Balanced" type="green" />}
+                <Pill type={balanced ? 'g' : 'a'}>{balanced ? 'Balanced' : 'Pending'}</Pill>
               </div>
-              <div className="g4 mb12">
-                <div className="stat"><p className="stat-l">Cash</p><p className="stat-v" style={{ color: 'var(--blue)' }}>{fmtC(c.cash)}</p></div>
-                <div className="stat"><p className="stat-l">POS (direct)</p><p className="stat-v" style={{ color: 'var(--green)' }}>{fmtC(c.pos)}</p></div>
-                <div className="stat"><p className="stat-l">Expenses</p><p className="stat-v" style={{ color: 'var(--red)' }}>{fmtC(c.exp)}</p></div>
-                <div className="stat"><p className="stat-l">Net (cash-exp)</p><p className="stat-v">{fmtC(c.netExpected)}</p></div>
+
+              <div className="bv-mkpis">
+                <div className="bv-mk ok"><div className="bv-mk-l">Cash</div><div className="bv-mk-v">{fmtC(c.cash)}</div></div>
+                <div className="bv-mk blue"><div className="bv-mk-l">POS (direct)</div><div className="bv-mk-v">{fmtC(c.pos)}</div></div>
+                <div className="bv-mk bad"><div className="bv-mk-l">Expenses</div><div className="bv-mk-v">{fmtC(c.exp)}</div></div>
+                <div className="bv-mk"><div className="bv-mk-l">Net (cash−exp)</div><div className="bv-mk-v">{fmtC(c.netExpected)}</div></div>
               </div>
+
               {shortPays.length > 0 && (
-                <div className="card-red mb12" style={{ padding: '12px 14px', borderRadius: 'var(--r-lg)' }}>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--red)', marginBottom: 8 }}>⚠ Rider Shortfalls</p>
-                  <table className="tbl">
-                    <thead><tr><th>Rider</th><th>Expected</th><th>Paid</th><th>Shortfall</th><th>Date</th></tr></thead>
-                    <tbody>
-                      {shortPays.map((p, i) => (
-                        <tr key={i}>
-                          <td><p style={{ fontWeight: 600 }}>{p.rider}</p></td>
-                          <td>{fmtC(p.expected || 0)}</td>
-                          <td style={{ color: 'var(--amber)', fontWeight: 600 }}>{fmtC(p.cash || 0)}</td>
-                          <td style={{ color: 'var(--red)', fontWeight: 700 }}>{fmtC(p.shortfall)}</td>
-                          <td style={{ fontSize: 11, color: 'var(--t4)' }}>{p.date}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div style={{ padding: '0 0 0 0' }}>
+                  <div style={{ margin: '0 18px 0', borderTop: '1px solid #fee2e2', paddingTop: 12, paddingBottom: 2 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#e0425a', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>⚠ Rider Shortfalls</div>
+                  </div>
+                  <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none', margin: '0 0 1px' }}>
+                    <table>
+                      <thead><tr><th>Rider</th><th>Expected</th><th>Paid</th><th>Shortfall</th><th>Date</th></tr></thead>
+                      <tbody>
+                        {shortPays.map((p, i) => (
+                          <tr key={i}>
+                            <td style={{ fontWeight: 600 }}>{p.rider}</td>
+                            <td><Money>{fmtC(p.expected || 0)}</Money></td>
+                            <td><Money tone="warn">{fmtC(p.cash || 0)}</Money></td>
+                            <td><Money tone="bad">{fmtC(p.shortfall)}</Money></td>
+                            <td className="bv-mono">{p.date}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
-              <table className="tbl">
-                <thead><tr><th>Amount</th><th>Bank</th><th>Account</th><th>TXN ID</th><th>Sent</th><th>Status</th></tr></thead>
-                <tbody>
-                  {rems.length ? rems.map((r, i) => (
-                    <tr key={i}>
-                      <td><p style={{ fontWeight: 700, color: 'var(--green)' }}>{fmtC(r.amount)}</p></td>
-                      <td>{r.bank || '—'}</td>
-                      <td><code style={{ fontSize: 11 }}>{r.account || '—'}</code></td>
-                      <td><code style={{ fontSize: 11 }}>{r.txID || '—'}</code></td>
-                      <td style={{ fontSize: 11, color: 'var(--t4)' }}>{r.date}</td>
-                      <td>
-                        {r.verified
-                          ? <Badge text="✓ Verified" type="green" />
-                          : <button className="btn btn-amber-soft btn-xs" onClick={() => verify(r.id)}>Verify →</button>}
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr><td colSpan={6} style={{ color: 'var(--t4)', fontSize: 12 }}>No remittance logged</td></tr>
-                  )}
-                </tbody>
-              </table>
+
+              <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none', borderTop: '1px solid #eef0f7' }}>
+                <table>
+                  <thead><tr><th>Amount</th><th>Bank</th><th>Account</th><th>TXN ID</th><th>Date</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {rems.length ? rems.map((r, i) => (
+                      <tr key={i}>
+                        <td><Money tone="ok">{fmtC(r.amount)}</Money></td>
+                        <td>{r.bank || '—'}</td>
+                        <td className="bv-mono">{r.account || '—'}</td>
+                        <td className="bv-mono">{r.txID || '—'}</td>
+                        <td className="bv-mono">{r.date}</td>
+                        <td>
+                          {r.verified
+                            ? <Blip type="ok">Verified</Blip>
+                            : <button className="bv-btn amber" style={{ height: 30, fontSize: 12 }} onClick={() => verify(r.id)}>Verify →</button>}
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr><td colSpan={6}><div className="bv-empty">No remittance logged</div></td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           );
         })}
       </div>
-    </>
+    </div>
   );
 }
+
+// ─── Vendor Payments ──────────────────────────────────────────────────────────
 
 function BossVendorPay({ fmtC, cfg, db }) {
   const { setDb, vpSelected, setVpSelected } = useApp();
@@ -340,70 +573,99 @@ function BossVendorPay({ fmtC, cfg, db }) {
   const payments = vpSelected ? (db.vendorPayments[vpSelected] || []) : [];
   const payStatus = c ? (c.remaining <= 0 && c.paid > 0 ? 'paid' : c.paid > 0 ? 'partial' : 'unpaid') : 'unpaid';
 
+  // All-vendors summary table
+  const allRows = cfg.vendors.map(v => {
+    const vc = vendorCalc(v);
+    const st = vc.remaining <= 0 && vc.paid > 0 ? 'paid' : vc.paid > 0 ? 'partial' : 'unpaid';
+    return { v, ...vc, st };
+  });
+  const totalPayable = allRows.reduce((s, r) => s + r.net, 0);
+  const totalPaid    = allRows.reduce((s, r) => s + r.paid, 0);
+  const totalRem     = totalPayable - totalPaid;
+
   return (
-    <>
-      <div className="pg-hd"><p className="pg-title">Vendor Payments</p><p className="pg-sub">Search vendor → see breakdown → log payment</p></div>
+    <div className="bv">
+      <style>{CSS}</style>
+      <div className="pg-hd"><p className="pg-title">Vendor Payments</p><p className="pg-sub">Select a vendor to see breakdown & log a payment</p></div>
       <div className="pg-body">
-        <div className="card mb16">
-          <label className="lbl">Select Vendor</label>
-          <select className="inp" value={vpSelected} onChange={e => setVpSelected(e.target.value)} style={{ flex: 1 }}>
+        <div className="bv-kpis c3" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 16 }}>
+          <div className="bv-kpi"><div className="bv-kpi-l">Total Payable</div><div className="bv-kpi-v">{fmtC(totalPayable)}</div></div>
+          <div className="bv-kpi ok"><div className="bv-kpi-l">Paid</div><div className="bv-kpi-v">{fmtC(totalPaid)}</div></div>
+          <div className={`bv-kpi ${totalRem > 0 ? 'warn' : 'ok'}`}><div className="bv-kpi-l">Remaining</div><div className="bv-kpi-v">{fmtC(totalRem)}</div></div>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label className="bv-lbl">Select Vendor</label>
+          <select className={`bv-inp bv-sel`} value={vpSelected || ''} onChange={e => setVpSelected(e.target.value)} style={{ maxWidth: 320 }}>
             <option value="">— Choose vendor —</option>
             {cfg.vendors.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
         </div>
 
+        {!vpSelected && (
+          <div className="bv-tw">
+            <table>
+              <thead><tr><th>Vendor</th><th style={{ textAlign: 'right' }}>Net Payable</th><th style={{ textAlign: 'right' }}>Paid</th><th style={{ textAlign: 'right' }}>Remaining</th><th>Status</th></tr></thead>
+              <tbody>
+                {allRows.map(r => (
+                  <tr key={r.v} style={{ cursor: 'pointer' }} onClick={() => setVpSelected(r.v)}>
+                    <td style={{ fontWeight: 700, color: '#1f2fc4' }}>{r.v}</td>
+                    <td style={{ textAlign: 'right' }}><Money>{fmtC(r.net)}</Money></td>
+                    <td style={{ textAlign: 'right' }}><Money tone={r.paid > 0 ? 'ok' : ''}>{fmtC(r.paid)}</Money></td>
+                    <td style={{ textAlign: 'right' }}><Money tone={r.remaining > 0 ? 'bad' : 'ok'}>{r.remaining === 0 ? '—' : fmtC(r.remaining)}</Money></td>
+                    <td>{r.st === 'paid' ? <Pill type="g">Paid</Pill> : r.st === 'partial' ? <Pill type="a">Partial</Pill> : <Pill type="r">Unpaid</Pill>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         {vpSelected && c && (
           <>
-            <div className="navy-hero mb16">
-              <div className="mini-grid">
-                <div className="mini-card"><p className="mini-l">Total Delivered Value</p><p className="mini-v" style={{ color: '#93c5fd' }}>{fmtC(c.totalVal)}</p></div>
-                <div className="mini-card"><p className="mini-l">Delivery Fees Deducted</p><p className="mini-v" style={{ color: '#fca5a5' }}>−{fmtC(c.fees)}</p></div>
-                <div className="mini-card"><p className="mini-l">Net Payable</p><p className="mini-v" style={{ color: '#fff' }}>{fmtC(c.net)}</p></div>
-                <div className="mini-card"><p className="mini-l">Amount Paid</p><p className="mini-v" style={{ color: '#6ee7b7' }}>{fmtC(c.paid)}</p></div>
-              </div>
-              <div className="bottom-strip">
-                <div className="bs-cell"><p className="bs-l">Total Owed</p><p className="bs-v">{fmtC(c.net)}</p></div>
-                <div className="bs-cell"><p className="bs-l">Amount Paid</p><p className="bs-v" style={{ color: '#6ee7b7' }}>{fmtC(c.paid)}</p></div>
-                <div className="bs-cell"><p className="bs-l">Remaining</p><p className="bs-v" style={{ color: c.remaining > 0 ? '#fca5a5' : '#6ee7b7' }}>{c.remaining > 0 ? fmtC(c.remaining) : '₦0 ✓'}</p></div>
-              </div>
+            <div className="bv-kpis c4" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 16 }}>
+              <div className="bv-kpi blue"><div className="bv-kpi-l">Delivered Value</div><div className="bv-kpi-v">{fmtC(c.totalVal)}</div></div>
+              <div className="bv-kpi bad"><div className="bv-kpi-l">Fees Deducted</div><div className="bv-kpi-v">−{fmtC(c.fees)}</div></div>
+              <div className="bv-kpi"><div className="bv-kpi-l">Net Payable</div><div className="bv-kpi-v">{fmtC(c.net)}</div></div>
+              <div className="bv-kpi ok"><div className="bv-kpi-l">Amount Paid</div><div className="bv-kpi-v">{fmtC(c.paid)}</div></div>
             </div>
 
-            <div className="row-b mb14">
-              <p style={{ fontSize: 14, fontWeight: 600 }}>{vpSelected}</p>
-              {payStatus === 'paid' ? <Badge text="✓ Fully Paid" type="green" /> : payStatus === 'partial' ? <Badge text="Partial Payment" type="amber" /> : <Badge text="Not Yet Paid" type="red" />}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>{vpSelected}</span>
+              {payStatus === 'paid' ? <Pill type="g">Fully Paid</Pill> : payStatus === 'partial' ? <Pill type="a">Partial Payment</Pill> : <Pill type="r">Not Yet Paid</Pill>}
             </div>
 
             {c.remaining > 0 && (
-              <div className="card card-purple mb16">
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--purple)', marginBottom: 14 }}>Log Payment to {vpSelected}</p>
-                <p style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 14 }}>Amount remaining: <strong style={{ color: 'var(--red)' }}>{fmtC(c.remaining)}</strong></p>
-                <div className="g2 mb12">
-                  <div><label className="lbl">Amount Paid</label><input className="inp" type="number" value={payFields.amount} onChange={e => setPayFields(f => ({ ...f, amount: e.target.value }))} /></div>
-                  <div><label className="lbl">Date</label><input className="inp" type="date" value={payFields.date} onChange={e => setPayFields(f => ({ ...f, date: e.target.value }))} /></div>
-                  <div><label className="lbl">Bank Name</label><input className="inp" value={payFields.bank} onChange={e => setPayFields(f => ({ ...f, bank: e.target.value }))} placeholder="GTBank, Opay..." /></div>
-                  <div><label className="lbl">Account Number</label><input className="inp" value={payFields.account} onChange={e => setPayFields(f => ({ ...f, account: e.target.value }))} placeholder="0123456789" style={{ fontFamily: 'monospace' }} /></div>
-                  <div><label className="lbl">Account Name</label><input className="inp" value={payFields.accountName} onChange={e => setPayFields(f => ({ ...f, accountName: e.target.value }))} placeholder="Vendor account name" /></div>
-                  <div><label className="lbl">Transaction ID</label><input className="inp" value={payFields.txID} onChange={e => setPayFields(f => ({ ...f, txID: e.target.value }))} placeholder="TRF..." style={{ fontFamily: 'monospace' }} /></div>
+              <div className="bv-form-panel" style={{ marginBottom: 16, borderColor: '#e0e7ff', background: '#fafbff' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1f2fc4', marginBottom: 14 }}>Log Payment to {vpSelected}</div>
+                <div style={{ fontSize: 12, color: '#5b6385', marginBottom: 14 }}>Remaining: <strong style={{ color: '#e0425a' }}>{fmtC(c.remaining)}</strong></div>
+                <div className="bv-form-grid" style={{ marginBottom: 14 }}>
+                  <div><label className="bv-lbl">Amount Paid</label><input className="bv-inp" type="number" value={payFields.amount} onChange={e => setPayFields(f => ({ ...f, amount: e.target.value }))} /></div>
+                  <div><label className="bv-lbl">Date</label><input className="bv-inp" type="date" value={payFields.date} onChange={e => setPayFields(f => ({ ...f, date: e.target.value }))} /></div>
+                  <div><label className="bv-lbl">Bank Name</label><input className="bv-inp" value={payFields.bank} onChange={e => setPayFields(f => ({ ...f, bank: e.target.value }))} placeholder="GTBank, Opay..." /></div>
+                  <div><label className="bv-lbl">Account Number</label><input className="bv-inp" value={payFields.account} onChange={e => setPayFields(f => ({ ...f, account: e.target.value }))} placeholder="0123456789" style={{ fontFamily: 'monospace' }} /></div>
+                  <div><label className="bv-lbl">Account Name</label><input className="bv-inp" value={payFields.accountName} onChange={e => setPayFields(f => ({ ...f, accountName: e.target.value }))} /></div>
+                  <div><label className="bv-lbl">Transaction ID <span style={{ color: '#e0425a' }}>*</span></label><input className="bv-inp" value={payFields.txID} onChange={e => setPayFields(f => ({ ...f, txID: e.target.value }))} placeholder="TRF..." style={{ fontFamily: 'monospace' }} /></div>
                 </div>
-                <button className="btn btn-primary" onClick={savePayment}>Submit Payment →</button>
+                <button className="bv-btn primary" onClick={savePayment}>Submit Payment →</button>
               </div>
             )}
 
             {payments.length > 0 && (
               <>
-                <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginBottom: 10 }}>Payment History</p>
-                <div className="card">
-                  <table className="tbl">
+                <div className="bv-sec">Payment History</div>
+                <div className="bv-tw">
+                  <table>
                     <thead><tr><th>Amount</th><th>Bank</th><th>Account</th><th>Account Name</th><th>TXN ID</th><th>Date</th></tr></thead>
                     <tbody>
                       {payments.map((p, i) => (
                         <tr key={i}>
-                          <td style={{ fontWeight: 700, color: 'var(--green)' }}>{fmtC(p.amount)}</td>
-                          <td style={{ fontSize: 12 }}>{p.bank || '—'}</td>
-                          <td><code style={{ fontSize: 11 }}>{p.account || '—'}</code></td>
+                          <td><Money tone="ok">{fmtC(p.amount)}</Money></td>
+                          <td>{p.bank || '—'}</td>
+                          <td className="bv-mono">{p.account || '—'}</td>
                           <td style={{ fontSize: 12 }}>{p.accountName || '—'}</td>
-                          <td><code style={{ fontSize: 11 }}>{p.txID || '—'}</code></td>
-                          <td style={{ fontSize: 11, color: 'var(--t4)' }}>{p.date}</td>
+                          <td className="bv-mono">{p.txID || '—'}</td>
+                          <td className="bv-mono">{p.date}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -413,34 +675,12 @@ function BossVendorPay({ fmtC, cfg, db }) {
             )}
           </>
         )}
-
-        {!vpSelected && (
-          <div className="card">
-            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>All Vendors — Payment Status</p>
-            <table className="tbl">
-              <thead><tr><th>Vendor</th><th>Net Payable</th><th>Paid</th><th>Remaining</th><th>Status</th></tr></thead>
-              <tbody>
-                {cfg.vendors.map(v => {
-                  const vc = vendorCalc(v);
-                  const st = vc.remaining <= 0 && vc.paid > 0 ? 'paid' : vc.paid > 0 ? 'partial' : 'unpaid';
-                  return (
-                    <tr key={v}>
-                      <td style={{ fontWeight: 600, cursor: 'pointer', color: 'var(--purple)' }} onClick={() => setVpSelected(v)}>{v}</td>
-                      <td style={{ fontWeight: 600 }}>{fmtC(vc.net)}</td>
-                      <td style={{ color: 'var(--green)', fontWeight: 600 }}>{fmtC(vc.paid)}</td>
-                      <td style={{ color: vc.remaining > 0 ? 'var(--red)' : 'var(--t4)', fontWeight: 600 }}>{vc.remaining > 0 ? fmtC(vc.remaining) : '—'}</td>
-                      <td>{st === 'paid' ? <Badge text="Paid" type="green" /> : st === 'partial' ? <Badge text="Partial" type="amber" /> : <Badge text="Unpaid" type="red" />}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
-    </>
+    </div>
   );
 }
+
+// ─── Inventory (boss read-only) ───────────────────────────────────────────────
 
 function BossInventory({ cfg, db }) {
   const [sv, setSv] = useState('');
@@ -455,91 +695,105 @@ function BossInventory({ cfg, db }) {
       const filt = Object.entries(items).filter(([p]) => !sp || p.toLowerCase().includes(sp.toLowerCase()));
       return { v, filt };
     })
-    .filter(({ filt }) => filt.length > 0 || !sp);
+    .filter(({ filt, v }) => filt.length > 0 || (!sp && !sv));
 
   return (
-    <>
-      <div className="pg-hd"><p className="pg-title">Inventory</p></div>
+    <div className="bv">
+      <style>{CSS}</style>
+      <div className="pg-hd"><p className="pg-title">Inventory</p><p className="pg-sub">Stock position per branch, grouped by vendor</p></div>
       <div className="pg-body">
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div className="bv-tabs">
           {cfg.branches.map(b => (
-            <button key={b} className={`btn btn-sm ${branch === b ? 'btn-primary' : 'btn-outline'}`} onClick={() => setBranch(b)}>{b}</button>
+            <button key={b} className={`bv-tab${branch === b ? ' on' : ''}`} onClick={() => setBranch(b)}>{b}</button>
           ))}
         </div>
-        <div className="g2 mb16">
-          <div className="search-wrap"><span className="s-ico">🔍</span><input className="inp" placeholder="Search vendor..." value={sv} onChange={e => setSv(e.target.value)} /></div>
-          <div className="search-wrap"><span className="s-ico">🔍</span><input className="inp" placeholder="Search product..." value={sp} onChange={e => setSp(e.target.value)} /></div>
-        </div>
-        {rows.map(({ v, filt }) => (
-          <div key={v} className="mb14">
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginBottom: 8 }}>{v}</p>
-            <div className="card card-sm">
-              <table className="tbl">
-                <thead><tr><th>Product</th><th>Received</th><th>Delivered</th><th>Remaining</th><th>Status</th></tr></thead>
-                <tbody>
-                  {filt.length ? filt.map(([p, d]) => {
-                    const rem = (d.received || 0) - (d.delivered || 0);
-                    return (
-                      <tr key={p}>
-                        <td><p style={{ fontWeight: 500 }}>{p}</p></td>
-                        <td style={{ color: 'var(--green)', fontWeight: 600 }}>{d.received || 0}</td>
-                        <td style={{ color: 'var(--purple)', fontWeight: 600 }}>{d.delivered || 0}</td>
-                        <td style={{ fontWeight: 700, color: rem <= 0 ? 'var(--red)' : 'var(--text)' }}>{rem}</td>
-                        <td><Badge text={rem <= 0 ? 'Out' : 'In stock'} type={rem <= 0 ? 'red' : 'green'} /></td>
-                      </tr>
-                    );
-                  }) : (
-                    <tr><td colSpan={5} style={{ fontSize: 12, color: 'var(--t4)' }}>No stock</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+
+        <div className="bv-search-row">
+          <div className="bv-input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ padding: '0 10px', flexShrink: 0, width: 36 }}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input placeholder="Search vendor…" value={sv} onChange={e => setSv(e.target.value)} />
           </div>
-        ))}
-        {rows.length === 0 && <div className="empty-box"><p className="empty-t">No results for {branch}</p></div>}
+          <div className="bv-input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ padding: '0 10px', flexShrink: 0, width: 36 }}><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input placeholder="Search product…" value={sp} onChange={e => setSp(e.target.value)} />
+          </div>
+        </div>
+
+        {rows.length === 0
+          ? <div className="bv-empty">No results for {branch}</div>
+          : rows.map(({ v, filt }) => (
+            <div key={v} className="bv-vg">
+              <div className="bv-vg-head">{v}</div>
+              {filt.length === 0
+                ? <div className="bv-empty">No stock</div>
+                : <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none' }}>
+                    <table>
+                      <thead><tr><th>Product</th><th style={{ textAlign: 'right' }}>Received</th><th style={{ textAlign: 'right' }}>Sent Out</th><th style={{ textAlign: 'right' }}>Delivered</th><th style={{ textAlign: 'right' }}>Remaining</th><th>Status</th></tr></thead>
+                      <tbody>
+                        {filt.map(([p, d]) => {
+                          const rem = (d.received || 0) - (d.sentOut || 0) - (d.delivered || 0);
+                          return (
+                            <tr key={p}>
+                              <td style={{ fontWeight: 600 }}>{p}</td>
+                              <td style={{ textAlign: 'right' }} className="bv-mono">{d.received || 0}</td>
+                              <td style={{ textAlign: 'right' }}><Money tone="warn">{d.sentOut || 0}</Money></td>
+                              <td style={{ textAlign: 'right' }}><Money tone="ok">{d.delivered || 0}</Money></td>
+                              <td style={{ textAlign: 'right' }}><Money tone={rem <= 0 ? 'bad' : ''}>{rem}</Money></td>
+                              <td>
+                                {rem <= 0 ? <Pill type="r">Out</Pill>
+                                  : rem <= 5 ? <Pill type="a">Low</Pill>
+                                  : <Pill type="g">In Stock</Pill>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+              }
+            </div>
+          ))
+        }
       </div>
-    </>
+    </div>
   );
 }
+
+// ─── CEO Tools ────────────────────────────────────────────────────────────────
 
 function BossTools({ setActiveTab, cfg }) {
   return (
-    <>
+    <div className="bv">
+      <style>{CSS}</style>
       <div className="pg-hd"><p className="pg-title">CEO Tools</p></div>
       <div className="pg-body">
-        <div className="g2 mb16">
-          <div
-            className="card"
-            style={{ cursor: 'pointer' }}
-            onClick={() => setActiveTab('dfees')}
-          >
-            <div style={{ width: 42, height: 42, borderRadius: 11, background: 'var(--amber-lt)', border: '1.5px solid var(--amber-bd)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 14 }}>🏍</div>
-            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 5 }}>Delivery Fees</p>
-            <p style={{ fontSize: 12, color: 'var(--t4)' }}>Set fees for failed & delivered orders from rider manager</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div className="bv-rowcard" style={{ padding: 20, cursor: 'pointer' }} onClick={() => setActiveTab('dfees')}>
+            <div style={{ width: 42, height: 42, borderRadius: 11, background: '#fef3c7', border: '1.5px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 14 }}>🏍</div>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 5 }}>Delivery Fees</div>
+            <div style={{ fontSize: 12, color: '#5b6385' }}>Set fees for failed & delivered orders from rider manager</div>
           </div>
-          <div
-            className="card"
-            style={{ cursor: 'pointer' }}
-            onClick={() => setActiveTab('loans')}
-          >
-            <div style={{ width: 42, height: 42, borderRadius: 11, background: 'var(--purple-lt)', border: '1.5px solid var(--purple-bd)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 14 }}>💰</div>
-            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 5 }}>Staff Loans</p>
-            <p style={{ fontSize: 12, color: 'var(--t4)' }}>Track loans and repayments</p>
+          <div className="bv-rowcard" style={{ padding: 20, cursor: 'pointer' }} onClick={() => setActiveTab('loans')}>
+            <div style={{ width: 42, height: 42, borderRadius: 11, background: '#ede9fe', border: '1.5px solid #ddd6fe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 14 }}>💰</div>
+            <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 5 }}>Staff Loans</div>
+            <div style={{ fontSize: 12, color: '#5b6385' }}>Track loans and repayments</div>
           </div>
         </div>
-        <div className="card" style={{ background: '#fafafa' }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginBottom: 12 }}>Staff Login Credentials</p>
+        <div className="bv-rowcard" style={{ padding: 18, background: '#fafbff' }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#858cab', marginBottom: 12 }}>Staff Login Credentials</div>
           {[{ u: 'boss', p: 'boss@2025', r: 'Boss / CEO' }, ...cfg.branches.map(b => ({ u: `${b.toLowerCase()}_manager`, p: `${b.toLowerCase()}mgr2025`, r: `${b} Manager` }))].map(u => (
-            <div key={u.u} className="row-b" style={{ padding: '6px 0', borderBottom: '1.5px solid var(--border-soft)' }}>
-              <span style={{ fontSize: 12, color: 'var(--t3)' }}>{u.r}</span>
-              <code style={{ fontSize: 11, color: 'var(--t4)' }}>{u.u} / {u.p}</code>
+            <div key={u.u} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eef0f7' }}>
+              <span style={{ fontSize: 12, color: '#5b6385' }}>{u.r}</span>
+              <code style={{ fontSize: 11, color: '#858cab' }}>{u.u} / {u.p}</code>
             </div>
           ))}
         </div>
       </div>
-    </>
+    </div>
   );
 }
+
+// ─── Delivery Fees ────────────────────────────────────────────────────────────
 
 function BossDeliveryFees({ fmtC, cfg, db, setActiveTab }) {
   const { setDb } = useApp();
@@ -556,47 +810,35 @@ function BossDeliveryFees({ fmtC, cfg, db, setActiveTab }) {
     setFeeInputs(prev => { const n = { ...prev }; delete n[orderId]; return n; });
   }
 
-  function previewNet(orderId) {
-    const total = ot(db.orders.find(o => o.id === orderId));
-    const fee = Number(feeInputs[orderId] || 0);
-    return fee > 0 ? Math.max(0, total - fee) : null;
-  }
-
   return (
-    <>
-      <div className="pg-hd">
-        <p className="pg-title">Delivery Fees</p>
-        <p className="pg-sub">Fee deducted from total collected — both cash & POS. Address is key identifier.</p>
-      </div>
+    <div className="bv">
+      <style>{CSS}</style>
+      <div className="pg-hd"><p className="pg-title">Delivery Fees</p><p className="pg-sub">Fee deducted from total collected. Address is the key identifier.</p></div>
       <div className="pg-body">
-        <button className="btn btn-outline btn-sm mb16" onClick={() => setActiveTab('tools')}>← Back</button>
+        <button className="bv-btn" style={{ marginBottom: 16 }} onClick={() => setActiveTab('tools')}>← Back</button>
         {pending.length > 0 && (
           <>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--amber)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 10 }}>Awaiting fee · {pending.length}</p>
+            <div className="bv-sec" style={{ color: '#e89b2f' }}>Awaiting fee · {pending.length}</div>
             {pending.map(o => {
               const total = ot(o);
-              const net = previewNet(o.id);
+              const fee = Number(feeInputs[o.id] || 0);
+              const net = fee > 0 ? Math.max(0, total - fee) : null;
               return (
-                <div key={o.id} className="card mb8">
-                  <div className="row-b mb4">
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>📍 {o.address}</p>
-                      <p style={{ fontSize: 12, color: 'var(--t3)' }}>Rider: <strong>{o.rider}</strong> · <Badge text={o.branch} type="gray" /> · {o.date}</p>
-                      <p style={{ fontSize: 12, color: 'var(--t3)', marginTop: 2 }}>Customer: {o.customerName} · {o.phone}</p>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginTop: 6 }}>Order total: <span style={{ color: 'var(--purple)' }}>{fmtC(total)}</span></p>
-                      <p style={{ fontSize: 11, color: 'var(--t4)' }}>{gp(o).map(p => p.name + ' ×' + p.qty + ' @ ' + fmtC(p.price)).join(' | ')}</p>
-                    </div>
-                    <div style={{ marginLeft: 12 }}><SBadge status={o.status} /></div>
+                <div key={o.id} className="bv-rowcard" style={{ padding: 18, marginBottom: 8 }}>
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 3 }}>📍 {o.address}</div>
+                    <div style={{ fontSize: 12, color: '#5b6385' }}>Rider: <strong>{o.rider}</strong> · {o.branch} · {o.date}</div>
+                    <div style={{ fontSize: 12, color: '#5b6385', marginTop: 2 }}>{o.customerName} · {o.phone}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginTop: 6 }}>Order total: <span style={{ color: '#1f2fc4' }}>{fmtC(total)}</span></div>
                   </div>
-                  <div className="divider" />
-                  <div className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
                     <div style={{ flex: 1 }}>
-                      <label className="lbl">Delivery Fee — will be deducted from {fmtC(total)}</label>
-                      <input className="inp" type="number" placeholder="e.g. 500" value={feeInputs[o.id] || ''} onChange={e => setFeeInputs(prev => ({ ...prev, [o.id]: e.target.value }))} />
+                      <label className="bv-lbl">Delivery Fee</label>
+                      <input className="bv-inp" type="number" placeholder="e.g. 500" value={feeInputs[o.id] || ''} onChange={e => setFeeInputs(p => ({ ...p, [o.id]: e.target.value }))} />
                     </div>
-                    <button className="btn btn-amber-soft btn-sm" onClick={() => saveFee(o.id)}>Save Fee</button>
+                    <button className="bv-btn amber" onClick={() => saveFee(o.id)}>Save Fee</button>
                   </div>
-                  {net !== null && <p style={{ marginTop: 6, fontSize: 12, color: 'var(--green)', fontWeight: 600 }}>Net to vendor after fee: {fmtC(net)}</p>}
+                  {net !== null && <div style={{ marginTop: 6, fontSize: 12, color: '#1fa67a', fontWeight: 600 }}>Net to vendor after fee: {fmtC(net)}</div>}
                 </div>
               );
             })}
@@ -604,21 +846,20 @@ function BossDeliveryFees({ fmtC, cfg, db, setActiveTab }) {
         )}
         {done.length > 0 && (
           <>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.07em', margin: '16px 0 10px' }}>Fee set · {done.length}</p>
-            <div className="card">
-              <table className="tbl">
-                <thead><tr><th>Address</th><th>Rider</th><th>Status</th><th>Order Total</th><th>Fee</th><th>Net to Vendor</th></tr></thead>
+            <div className="bv-sec" style={{ color: '#1fa67a' }}>Fee set · {done.length}</div>
+            <div className="bv-tw">
+              <table>
+                <thead><tr><th>Address</th><th>Rider</th><th>Order Total</th><th>Fee</th><th>Net to Vendor</th></tr></thead>
                 <tbody>
                   {done.map(o => {
                     const total = ot(o); const fee = db.deliveryFees[o.id];
                     return (
                       <tr key={o.id}>
-                        <td><p style={{ fontWeight: 600, fontSize: 13 }}>📍 {o.address}</p><p style={{ fontSize: 11, color: 'var(--t4)' }}>{o.customerName}</p></td>
+                        <td><div style={{ fontWeight: 600 }}>📍 {o.address}</div><div style={{ fontSize: 11, color: '#858cab' }}>{o.customerName}</div></td>
                         <td style={{ fontSize: 12 }}>{o.rider}</td>
-                        <td><SBadge status={o.status} /></td>
-                        <td style={{ fontWeight: 600 }}>{fmtC(total)}</td>
-                        <td style={{ fontWeight: 700, color: 'var(--red)' }}>−{fmtC(fee)}</td>
-                        <td style={{ fontWeight: 700, color: 'var(--green)' }}>{fmtC(Math.max(0, total - fee))}</td>
+                        <td><Money>{fmtC(total)}</Money></td>
+                        <td><Money tone="bad">−{fmtC(fee)}</Money></td>
+                        <td><Money tone="ok">{fmtC(Math.max(0, total - fee))}</Money></td>
                       </tr>
                     );
                   })}
@@ -627,22 +868,30 @@ function BossDeliveryFees({ fmtC, cfg, db, setActiveTab }) {
             </div>
           </>
         )}
-        {!eligible.length && <div className="empty-box"><p className="empty-t">No orders yet</p><p>Delivered and failed orders appear here once logged by rider manager</p></div>}
+        {!eligible.length && <div className="bv-empty">No orders yet. Delivered and failed orders appear here once logged by rider manager.</div>}
       </div>
-    </>
+    </div>
   );
 }
+
+// ─── Staff Loans ──────────────────────────────────────────────────────────────
 
 function BossLoans({ fmtC, db, setActiveTab }) {
   const { setDb } = useApp();
   const [newLoan, setNewLoan] = useState({ name: '', total: '', salary: '', date: TODAY, note: '' });
   const active = db.loans.filter(l => l.status !== 'cleared');
   const cleared = db.loans.filter(l => l.status === 'cleared');
-  const owed = active.reduce((s, l) => { const r = (l.repayments || []).reduce((rs, p) => rs + p.amount, 0); return s + Math.max(0, l.total - r); }, 0);
+  const owed = active.reduce((s, l) => {
+    const r = (l.repayments || []).reduce((rs, p) => rs + p.amount, 0);
+    return s + Math.max(0, l.total - r);
+  }, 0);
 
   function saveLoan() {
     if (!newLoan.name || !newLoan.total) return;
-    setDb(prev => ({ ...prev, loans: [...prev.loans, { id: Date.now(), ...newLoan, total: Number(newLoan.total), salary: Number(newLoan.salary) || 0, repayments: [], status: 'active' }] }));
+    setDb(prev => ({
+      ...prev,
+      loans: [...prev.loans, { id: Date.now(), ...newLoan, total: Number(newLoan.total), salary: Number(newLoan.salary) || 0, repayments: [], status: 'active' }],
+    }));
     setNewLoan({ name: '', total: '', salary: '', date: TODAY, note: '' });
   }
 
@@ -660,44 +909,49 @@ function BossLoans({ fmtC, db, setActiveTab }) {
   }
 
   return (
-    <>
+    <div className="bv">
+      <style>{CSS}</style>
       <div className="pg-hd"><p className="pg-title">Staff Loans</p></div>
       <div className="pg-body">
-        <button className="btn btn-outline btn-sm mb16" onClick={() => setActiveTab('tools')}>← Back</button>
+        <button className="bv-btn" style={{ marginBottom: 16 }} onClick={() => setActiveTab('tools')}>← Back</button>
+
         {owed > 0 && (
-          <div className="hero-grad mb20">
-            <div className="mesh"><svg viewBox="0 0 800 300" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><ellipse cx="600" cy="80" rx="320" ry="240" fill="url(#g1)"/><ellipse cx="700" cy="220" rx="260" ry="280" fill="url(#g2)"/></svg></div>
-            <p style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,.55)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6, position: 'relative' }}>Total outstanding</p>
-            <p style={{ fontSize: 32, fontWeight: 700, color: '#fff', letterSpacing: '-.03em', position: 'relative' }}>{fmtC(owed)}</p>
+          <div className="bv-kpi accent" style={{ marginBottom: 16, padding: '20px 22px' }}>
+            <div className="bv-kpi-l">Total Outstanding</div>
+            <div style={{ fontSize: 32, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: '#e0425a', marginTop: 6 }}>{fmtC(owed)}</div>
           </div>
         )}
-        <div className="card card-purple mb16">
-          <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--purple)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 14 }}>Add New Loan</p>
-          <div className="g2 mb12">
-            <div><label className="lbl">Staff Name</label><input className="inp" value={newLoan.name} placeholder="Full name" onChange={e => setNewLoan(l => ({ ...l, name: e.target.value }))} /></div>
-            <div><label className="lbl">Loan Amount</label><input className="inp" type="number" value={newLoan.total} placeholder="0" onChange={e => setNewLoan(l => ({ ...l, total: e.target.value }))} /></div>
-            <div><label className="lbl">Monthly Salary</label><input className="inp" type="number" value={newLoan.salary} placeholder="0" onChange={e => setNewLoan(l => ({ ...l, salary: e.target.value }))} /></div>
-            <div><label className="lbl">Date</label><input className="inp" type="date" value={newLoan.date} onChange={e => setNewLoan(l => ({ ...l, date: e.target.value }))} /></div>
-            <div className="span2"><label className="lbl">Note</label><input className="inp" value={newLoan.note} placeholder="Reason..." onChange={e => setNewLoan(l => ({ ...l, note: e.target.value }))} /></div>
+
+        <div className="bv-form-panel" style={{ marginBottom: 16, borderColor: '#e0e7ff', background: '#fafbff' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#1f2fc4', marginBottom: 14 }}>Add New Loan</div>
+          <div className="bv-form-grid" style={{ marginBottom: 14 }}>
+            <div><label className="bv-lbl">Staff Name</label><input className="bv-inp" value={newLoan.name} placeholder="Full name" onChange={e => setNewLoan(l => ({ ...l, name: e.target.value }))} /></div>
+            <div><label className="bv-lbl">Loan Amount</label><input className="bv-inp" type="number" value={newLoan.total} placeholder="0" onChange={e => setNewLoan(l => ({ ...l, total: e.target.value }))} /></div>
+            <div><label className="bv-lbl">Monthly Salary</label><input className="bv-inp" type="number" value={newLoan.salary} placeholder="0" onChange={e => setNewLoan(l => ({ ...l, salary: e.target.value }))} /></div>
+            <div><label className="bv-lbl">Date</label><input className="bv-inp" type="date" value={newLoan.date} onChange={e => setNewLoan(l => ({ ...l, date: e.target.value }))} /></div>
+            <div className="span2"><label className="bv-lbl">Note</label><input className="bv-inp" value={newLoan.note} placeholder="Reason..." onChange={e => setNewLoan(l => ({ ...l, note: e.target.value }))} /></div>
           </div>
-          <button className="btn btn-primary btn-sm" onClick={saveLoan}>Add Loan</button>
+          <button className="bv-btn primary" onClick={saveLoan}>Add Loan</button>
         </div>
-        <div className="col">{active.map(l => <LoanCard key={l.id} loan={l} fmtC={fmtC} onRepay={saveRepay} />)}</div>
+
+        {active.map(l => <LoanCard key={l.id} loan={l} fmtC={fmtC} onRepay={saveRepay} />)}
+
         {cleared.length > 0 && (
           <>
-            <p style={{ fontSize: 11, color: 'var(--t4)', margin: '16px 0 8px' }}>Cleared · {cleared.length}</p>
-            <div className="col">
-              {cleared.map(l => (
-                <div key={l.id} className="card card-green row-b">
-                  <div><p style={{ fontWeight: 600 }}>{l.name}</p><p style={{ fontSize: 11, color: 'var(--t4)' }}>{l.date} · {fmtC(l.total)}</p></div>
-                  <Badge text="Cleared" type="green" />
+            <div className="bv-sec">Cleared · {cleared.length}</div>
+            {cleared.map(l => (
+              <div key={l.id} className="bv-rowcard" style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{l.name}</div>
+                  <div style={{ fontSize: 11, color: '#858cab' }}>{l.date} · {fmtC(l.total)}</div>
                 </div>
-              ))}
-            </div>
+                <Pill type="g">Cleared</Pill>
+              </div>
+            ))}
           </>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -709,30 +963,30 @@ function LoanCard({ loan: l, fmtC, onRepay }) {
   const pct = l.total > 0 ? Math.min(100, Math.round((repaid / l.total) * 100)) : 0;
 
   return (
-    <div className="card mb8">
-      <div className="row-b mb12">
+    <div className="bv-loan" style={{ marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
         <div>
-          <p style={{ fontWeight: 700, fontSize: 15 }}>{l.name}</p>
-          <p style={{ fontSize: 11, color: 'var(--t4)' }}>{l.date}{l.note ? ' · ' + l.note : ''}{l.salary ? ' · 50%=' + fmtC(l.salary * .5) : ''}</p>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>{l.name}</div>
+          <div style={{ fontSize: 11, color: '#858cab' }}>{l.date}{l.note ? ' · ' + l.note : ''}{l.salary ? ' · 50%=' + fmtC(l.salary * .5) : ''}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--red)' }}>{fmtC(bal)}</p>
-          <p style={{ fontSize: 11, color: 'var(--t4)' }}>of {fmtC(l.total)}</p>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#e0425a', fontFamily: "'JetBrains Mono',monospace" }}>{fmtC(bal)}</div>
+          <div style={{ fontSize: 11, color: '#858cab' }}>of {fmtC(l.total)}</div>
         </div>
       </div>
-      <div className="prog mb4"><div className="prog-fill" style={{ width: `${pct}%`, background: 'var(--purple)' }} /></div>
-      <p style={{ fontSize: 11, color: 'var(--t4)', marginBottom: 12 }}>{fmtC(repaid)} repaid · {pct}%</p>
+      <div className="bv-prog"><div className="bv-prog-fill" style={{ width: `${pct}%` }} /></div>
+      <div style={{ fontSize: 11, color: '#858cab', marginBottom: 12 }}>{fmtC(repaid)} repaid · {pct}%</div>
       {(l.repayments || []).map((r, i) => (
-        <div key={i} className="row-b" style={{ padding: '4px 0', borderBottom: '1.5px solid var(--border-soft)' }}>
-          <span style={{ fontSize: 12, color: 'var(--t3)' }}>{r.date}</span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--green)' }}>+{fmtC(r.amount)}</span>
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #eef0f7', fontSize: 12 }}>
+          <span style={{ color: '#5b6385' }}>{r.date}</span>
+          <Money tone="ok">+{fmtC(r.amount)}</Money>
         </div>
       ))}
-      <div className="g2 mt12 mb8">
-        <div><label className="lbl">Repayment</label><input className="inp" type="number" value={repayAmt} placeholder="0" onChange={e => setRepayAmt(e.target.value)} /></div>
-        <div><label className="lbl">Date</label><input className="inp" type="date" value={repayDate} onChange={e => setRepayDate(e.target.value)} /></div>
+      <div className="bv-form-grid" style={{ marginTop: 14, marginBottom: 10 }}>
+        <div><label className="bv-lbl">Repayment</label><input className="bv-inp" type="number" value={repayAmt} placeholder="0" onChange={e => setRepayAmt(e.target.value)} /></div>
+        <div><label className="bv-lbl">Date</label><input className="bv-inp" type="date" value={repayDate} onChange={e => setRepayDate(e.target.value)} /></div>
       </div>
-      <button className="btn btn-green btn-sm btn-full" onClick={() => { onRepay(l.id, repayAmt, repayDate); setRepayAmt(''); }}>+ Log Repayment</button>
+      <button className="bv-btn primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { onRepay(l.id, repayAmt, repayDate); setRepayAmt(''); }}>+ Log Repayment</button>
     </div>
   );
 }
