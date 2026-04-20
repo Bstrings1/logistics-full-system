@@ -60,7 +60,7 @@ button{cursor:pointer}
 /* ── INPUTS ── */
 .inp{width:100%;background:#fff;border:1.5px solid var(--border);color:var(--text);border-radius:var(--r);padding:10px 14px;font-size:13px;outline:none;transition:border-color .15s,box-shadow .15s;box-shadow:0 1px 2px rgba(0,0,0,.03);text-align:left}
 input[type="date"].inp{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;text-align:left;-webkit-text-align:left;box-sizing:border-box}
-@media (max-width:768px){.inp,select.inp,textarea.inp{font-size:16px !important}}
+@media (max-width:768px){.inp,select.inp,textarea.inp{font-size:16px}}
 .inp:focus{border-color:var(--purple);box-shadow:0 0 0 4px var(--purple-glow)}
 .inp::placeholder{color:var(--t4)}
 label.lbl{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px;letter-spacing:.01em}
