@@ -333,36 +333,43 @@ export function AppProvider({ children }) {
   const prevDbRef = useRef(EMPTY_DB);
   const loadedRef = useRef(false);
 
-  useEffect(() => {
-    async function load() {
-      const [
-        { data: orders }, { data: riders }, { data: payments },
-        { data: expenses }, { data: riderExpenses }, { data: remittances },
-        { data: deliveryFees }, { data: loans }, { data: inventory },
-        { data: vendorPayments }, { data: inventoryHistory }, { data: configRow },
-      ] = await Promise.all([
-        supabase.from('orders').select('*'),
-        supabase.from('riders').select('*'),
-        supabase.from('payments').select('*'),
-        supabase.from('expenses').select('*'),
-        supabase.from('rider_expenses').select('*'),
-        supabase.from('remittances').select('*'),
-        supabase.from('delivery_fees').select('*'),
-        supabase.from('loans').select('*'),
-        supabase.from('inventory').select('*'),
-        supabase.from('vendor_payments').select('*'),
-        supabase.from('inventory_history').select('*'),
-        supabase.from('config').select('*').eq('id', 1).maybeSingle(),
-      ]);
+  async function loadAll() {
+    const [
+      { data: orders }, { data: riders }, { data: payments },
+      { data: expenses }, { data: riderExpenses }, { data: remittances },
+      { data: deliveryFees }, { data: loans }, { data: inventory },
+      { data: vendorPayments }, { data: inventoryHistory }, { data: configRow },
+    ] = await Promise.all([
+      supabase.from('orders').select('*'),
+      supabase.from('riders').select('*'),
+      supabase.from('payments').select('*'),
+      supabase.from('expenses').select('*'),
+      supabase.from('rider_expenses').select('*'),
+      supabase.from('remittances').select('*'),
+      supabase.from('delivery_fees').select('*'),
+      supabase.from('loans').select('*'),
+      supabase.from('inventory').select('*'),
+      supabase.from('vendor_payments').select('*'),
+      supabase.from('inventory_history').select('*'),
+      supabase.from('config').select('*').eq('id', 1).maybeSingle(),
+    ]);
 
-      const appDb = rowsToDb({ orders, riders, payments, expenses, riderExpenses, remittances, deliveryFees, loans, inventory, vendorPayments, inventoryHistory: inventoryHistory || [] });
-      prevDbRef.current = appDb;
-      setDbState(appDb);
-      if (configRow?.data) setCfgState(deserializeCfg(configRow.data));
-      loadedRef.current = true;
-      setLoading(false);
-    }
-    load();
+    const appDb = rowsToDb({ orders, riders, payments, expenses, riderExpenses, remittances, deliveryFees, loans, inventory, vendorPayments, inventoryHistory: inventoryHistory || [] });
+    prevDbRef.current = appDb;
+    setDbState(appDb);
+    if (configRow?.data) setCfgState(deserializeCfg(configRow.data));
+    loadedRef.current = true;
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadAll();
+
+    const channel = supabase.channel('db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => { loadAll(); })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   useEffect(() => {
