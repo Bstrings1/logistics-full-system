@@ -274,7 +274,7 @@ function RiderAssign({ filterP, fmtC, branch }) {
             <p className="f-sub">Orders with matching phone or name+address are shown first — verify before assigning</p>
           </div>
         )}
-        <div className="g2 mb14">
+        <div className="g2 mb20">
           <div className="search-wrap"><span className="s-ico">🔍</span><input className="inp" placeholder="Search by name..." value={filter.name} onChange={e => setFilter(f => ({ ...f, name: e.target.value }))} /></div>
           <div className="search-wrap"><span className="s-ico">🔍</span><input className="inp" placeholder="Search by phone..." value={filter.phone} onChange={e => setFilter(f => ({ ...f, phone: e.target.value }))} /></div>
         </div>
