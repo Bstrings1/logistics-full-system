@@ -85,22 +85,22 @@ function RiderLog({ filterP, fmtC, branch }) {
 
   return (
     <>
-      <div className="pg-hd"><p className="pg-title">Log Order</p></div>
-      <div className="pg-body">
-        <div className="card">
-          <div className="g2 mb12">
-            <div><label className="lbl">Date</label><input className="inp" type="date" value={date} onChange={e => setDate(e.target.value)} style={{width:'100%',minWidth:0}} /></div>
-            <div><label className="lbl">Customer Name</label><input className="inp" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="e.g. Mrs Okonkwo" /></div>
-            <div><label className="lbl">Phone</label><input className="inp" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="080..." /></div>
-            <div><label className="lbl">Vendor</label>
-              <select className="inp" value={vendor} onChange={e => handleVendorChange(e.target.value)}>
+      <div className="pg-hd"><p className="pg-title" style={{fontSize:20}}>Log Order</p></div>
+      <div className="pg-body" style={{padding:'14px 14px 48px'}}>
+        <div className="card" style={{padding:12}}>
+          <div className="g2 mb12" style={{gap:10}}>
+            <div><label className="lbl" style={{fontSize:10,marginBottom:3}}>Date</label><input className="inp" type="date" value={date} onChange={e => setDate(e.target.value)} style={{width:'100%',minWidth:0,padding:'6px 9px',fontSize:13}} /></div>
+            <div><label className="lbl" style={{fontSize:10,marginBottom:3}}>Customer Name</label><input className="inp" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="e.g. Mrs Okonkwo" style={{padding:'6px 9px',fontSize:13}} /></div>
+            <div><label className="lbl" style={{fontSize:10,marginBottom:3}}>Phone</label><input className="inp" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="080..." style={{padding:'6px 9px',fontSize:13}} /></div>
+            <div><label className="lbl" style={{fontSize:10,marginBottom:3}}>Vendor</label>
+              <select className="inp" value={vendor} onChange={e => handleVendorChange(e.target.value)} style={{padding:'6px 9px',fontSize:13}}>
                 {cfg.vendors.map(v => <option key={v}>{v}</option>)}
               </select>
             </div>
-            <div className="span2"><label className="lbl">Delivery Address</label><input className="inp" value={address} onChange={e => setAddress(e.target.value)} placeholder="Full address..." /></div>
+            <div className="span2"><label className="lbl" style={{fontSize:10,marginBottom:3}}>Delivery Address</label><input className="inp" value={address} onChange={e => setAddress(e.target.value)} placeholder="Full address..." style={{padding:'6px 9px',fontSize:13}} /></div>
           </div>
           <div className="divider" />
-          <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Products</p>
+          <p style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Products</p>
           <div className="col mb10">
             {products.map((row, i) => (
               <ProdRow
