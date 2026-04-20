@@ -89,7 +89,7 @@ function RiderLog({ filterP, fmtC, branch }) {
       <div className="pg-body">
         <div className="card">
           <div className="g2 mb12">
-            <div><label className="lbl">Date</label><input className="inp" type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
+            <div><label className="lbl">Date</label><input className="inp" type="date" value={date} onChange={e => setDate(e.target.value)} style={{width:'100%',minWidth:0}} /></div>
             <div><label className="lbl">Customer Name</label><input className="inp" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="e.g. Mrs Okonkwo" /></div>
             <div><label className="lbl">Phone</label><input className="inp" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="080..." /></div>
             <div><label className="lbl">Vendor</label>
