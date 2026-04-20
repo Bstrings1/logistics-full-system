@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { gp } from '../utils/helpers';
 
+const S = {
+  lbl: { fontSize: 11, fontWeight: 600, color: 'var(--t2)', marginBottom: 3, display: 'block' },
+  inp: { width: '100%', border: '1.5px solid var(--border)', borderRadius: 8, padding: '8px 10px', fontSize: 16, outline: 'none', background: '#fff', color: 'var(--text)', boxSizing: 'border-box' },
+};
+
 export default function EditOrderModal() {
   const { db, setDb, editModalOrderId, setEditModalOrderId } = useApp();
   const [fields, setFields] = useState({ customerName: '', phone: '', address: '' });
@@ -45,56 +50,69 @@ export default function EditOrderModal() {
 
   return (
     <div className="modal-bg open">
-      <div className="modal-box">
-        <div className="row-b mb20">
+      <div className="modal-box" style={{ padding: 0, display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}>
+
+        {/* Header */}
+        <div style={{ padding: '14px 16px 10px', borderBottom: '1.5px solid var(--border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
-            <p className="modal-title">Edit Before Confirming</p>
-            <p className="modal-sub">Update products or details, then confirm</p>
+            <p className="modal-title" style={{ fontSize: 15, marginBottom: 1 }}>Edit Before Confirming</p>
+            <p style={{ fontSize: 11, color: 'var(--t3)' }}>Update details, then confirm</p>
           </div>
           <button className="btn btn-outline btn-sm" onClick={close}>Cancel</button>
         </div>
 
-        <div className="g2 mb12">
-          <div>
-            <label className="lbl">Customer Name</label>
-            <input className="inp" value={fields.customerName} onChange={e => setFields(f => ({ ...f, customerName: e.target.value }))} />
+        {/* Scrollable body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+          <div className="g2" style={{ gap: 10, marginBottom: 10 }}>
+            <div>
+              <label style={S.lbl}>Customer Name</label>
+              <input style={S.inp} value={fields.customerName} onChange={e => setFields(f => ({ ...f, customerName: e.target.value }))} />
+            </div>
+            <div>
+              <label style={S.lbl}>Phone</label>
+              <input style={S.inp} value={fields.phone} onChange={e => setFields(f => ({ ...f, phone: e.target.value }))} />
+            </div>
+            <div className="span2">
+              <label style={S.lbl}>Address</label>
+              <input style={S.inp} value={fields.address} onChange={e => setFields(f => ({ ...f, address: e.target.value }))} />
+            </div>
           </div>
-          <div>
-            <label className="lbl">Phone</label>
-            <input className="inp" value={fields.phone} onChange={e => setFields(f => ({ ...f, phone: e.target.value }))} />
+
+          <div style={{ height: 1, background: 'var(--border-soft)', margin: '10px 0' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <p style={{ fontSize: 12, fontWeight: 600 }}>Products</p>
+            <button className="btn btn-outline btn-sm" onClick={addProd}>+ Add Product</button>
           </div>
-          <div className="span2">
-            <label className="lbl">Address</label>
-            <input className="inp" value={fields.address} onChange={e => setFields(f => ({ ...f, address: e.target.value }))} />
-          </div>
-        </div>
-        <div className="divider" />
-        <div className="row-b mb10">
-          <p style={{ fontSize: 13, fontWeight: 600 }}>Products</p>
-          <button className="btn btn-outline btn-sm" onClick={addProd}>+ Add Product</button>
-        </div>
-        <div className="col mb16">
-          {products.map((p, i) => (
-            <div key={p._key} className="card card-sm">
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--t3)', marginBottom: 8 }}>Product {i + 1}</p>
-              <div className="g3">
-                <div>
-                  <label className="lbl">Name</label>
-                  <input className="inp" value={p.name} onChange={e => updateProd(i, 'name', e.target.value)} />
-                </div>
-                <div>
-                  <label className="lbl">Price</label>
-                  <input className="inp" type="number" value={p.price} onChange={e => updateProd(i, 'price', e.target.value)} />
-                </div>
-                <div>
-                  <label className="lbl">Qty</label>
-                  <input className="inp" type="number" value={p.qty} onChange={e => updateProd(i, 'qty', e.target.value)} />
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {products.map((p, i) => (
+              <div key={p._key} style={{ border: '1.5px solid var(--border)', borderRadius: 10, padding: '10px 12px' }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', marginBottom: 8 }}>Product {i + 1}</p>
+                <div className="g3" style={{ gap: 8 }}>
+                  <div>
+                    <label style={S.lbl}>Name</label>
+                    <input style={S.inp} value={p.name} onChange={e => updateProd(i, 'name', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={S.lbl}>Price</label>
+                    <input style={S.inp} type="number" value={p.price} onChange={e => updateProd(i, 'price', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={S.lbl}>Qty</label>
+                    <input style={S.inp} type="number" value={p.qty} onChange={e => updateProd(i, 'qty', e.target.value)} />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-        <button className="btn btn-primary btn-full" onClick={confirmDelivered}>✓ Confirm Delivered</button>
+
+        {/* Sticky confirm button */}
+        <div style={{ padding: '10px 16px 14px', borderTop: '1.5px solid var(--border-soft)', flexShrink: 0 }}>
+          <button className="btn btn-primary btn-full" onClick={confirmDelivered}>✓ Confirm Delivered</button>
+        </div>
+
       </div>
     </div>
   );
