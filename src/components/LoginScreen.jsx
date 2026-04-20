@@ -142,9 +142,14 @@ const CSS = `
     80%{ transform: translateX(4px); }
   }
   @media (max-width: 480px) {
-    .kyne-stage { padding: 20px 14px; align-items: center; }
-    .kyne-card { padding: 22px 18px 20px; border-radius: 18px; }
-    .kyne-btn { height: 48px; font-size: 14px; }
+    .kyne-stage { padding: 12px 14px; }
+    .kyne-card { padding: 18px 16px 16px; border-radius: 16px; }
+    .kyne-card h1 { font-size: 20px !important; }
+    .kyne-card p { font-size: 12px !important; margin-bottom: 0 !important; }
+    .kyne-input-wrap input { padding: 10px 10px 10px 0; font-size: 14px; }
+    .kyne-input-icon { width: 38px; }
+    .kyne-btn { height: 44px; font-size: 14px; margin-top: 6px !important; }
+    .kyne-meta { margin-top: 14px; font-size: 10px; }
   }
 `;
 
@@ -197,11 +202,11 @@ export default function LoginScreen() {
         <div className="kyne-wrap">
 
           {/* Brand lockup */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-            <KMark />
-            <span style={{ fontWeight: 800, fontSize: 28, letterSpacing: '-0.8px', color: '#0b1230' }}>{company}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <KMark size={38} />
+            <span style={{ fontWeight: 800, fontSize: 26, letterSpacing: '-0.8px', color: '#0b1230' }}>{company}</span>
           </div>
-          <div style={{ fontSize: 13, color: '#858cab', letterSpacing: '0.02em', marginBottom: 20, textAlign: 'center' }}>
+          <div style={{ fontSize: 12, color: '#858cab', letterSpacing: '0.02em', marginBottom: 14, textAlign: 'center' }}>
             Logistics for <strong style={{ color: '#5b6385', fontWeight: 600 }}>ecommerce operators</strong> who sweat the details.
           </div>
 
@@ -210,7 +215,7 @@ export default function LoginScreen() {
             <h1 style={{ margin: 0, fontSize: 26, lineHeight: 1.15, letterSpacing: '-0.5px', fontWeight: 700, color: '#0b1230' }}>Welcome back</h1>
             <p style={{ marginTop: 6, marginBottom: 0, fontSize: 14, color: '#5b6385' }}>Sign in to your {company} account to continue.</p>
 
-            <form style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 14 }} onSubmit={e => { e.preventDefault(); doLogin(); }}>
+            <form style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 11 }} onSubmit={e => { e.preventDefault(); doLogin(); }}>
 
               {error && <div className="kyne-err">{error}</div>}
 
