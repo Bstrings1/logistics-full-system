@@ -85,7 +85,7 @@ function RiderLog({ filterP, fmtC, branch }) {
 
   return (
     <>
-      <div className="pg-hd"><p className="pg-title" style={{fontSize:20}}>Log Order</p></div>
+      <div className="pg-hd" style={{position:'sticky',top:0,zIndex:50,background:'#fff'}}><p className="pg-title" style={{fontSize:20}}>Log Order</p></div>
       <div className="pg-body" style={{padding:'14px 14px 48px'}}>
         <div className="card" style={{padding:12}}>
           <div className="g2 mb12" style={{gap:10}}>
@@ -126,9 +126,11 @@ function RiderLog({ filterP, fmtC, branch }) {
                '⚠ All products must be selected from the dropdown with a valid price'}
             </p>
           )}
-          <button className="btn btn-primary mt8" onClick={save} disabled={!canSave} style={{ opacity: canSave ? 1 : 0.45 }}>
-            Save Order
-          </button>
+          <div style={{position:'sticky',bottom:0,background:'#fff',padding:'10px 0 4px',marginTop:8}}>
+            <button className="btn btn-primary" onClick={save} disabled={!canSave} style={{opacity:canSave?1:0.45,width:'100%'}}>
+              Save Order
+            </button>
+          </div>
         </div>
         {unassigned.length > 0 && (
           <div className="card card-amber row-b mt12">
