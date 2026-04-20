@@ -23,8 +23,8 @@ const CSS = `
   .kyne-stage {
     position: relative; z-index: 1;
     min-height: 100vh;
-    display: grid; place-items: center;
-    padding: 48px 24px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 32px 16px;
   }
   .kyne-wrap {
     width: 100%; max-width: 440px;
@@ -142,7 +142,9 @@ const CSS = `
     80%{ transform: translateX(4px); }
   }
   @media (max-width: 480px) {
-    .kyne-card { padding: 26px 22px 24px; }
+    .kyne-stage { padding: 20px 14px; align-items: center; }
+    .kyne-card { padding: 22px 18px 20px; border-radius: 18px; }
+    .kyne-btn { height: 48px; font-size: 14px; }
   }
 `;
 
@@ -195,11 +197,11 @@ export default function LoginScreen() {
         <div className="kyne-wrap">
 
           {/* Brand lockup */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
             <KMark />
-            <span style={{ fontWeight: 800, fontSize: 30, letterSpacing: '-0.8px', color: '#0b1230' }}>{company}</span>
+            <span style={{ fontWeight: 800, fontSize: 28, letterSpacing: '-0.8px', color: '#0b1230' }}>{company}</span>
           </div>
-          <div style={{ fontSize: 13, color: '#858cab', letterSpacing: '0.02em', marginBottom: 28, textAlign: 'center' }}>
+          <div style={{ fontSize: 13, color: '#858cab', letterSpacing: '0.02em', marginBottom: 20, textAlign: 'center' }}>
             Logistics for <strong style={{ color: '#5b6385', fontWeight: 600 }}>ecommerce operators</strong> who sweat the details.
           </div>
 
