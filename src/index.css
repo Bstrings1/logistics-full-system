@@ -109,7 +109,7 @@ label.lbl{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bo
 /* ── MOBILE OVERLAY & HAMBURGER ── */
 .sb-overlay{display:none;position:fixed;inset:0;background:rgba(13,27,62,.5);z-index:499;backdrop-filter:blur(3px)}
 .hamburger{display:none;background:none;border:none;font-size:22px;color:var(--navy);padding:4px 8px;line-height:1}
-.mobile-topbar{display:none;align-items:center;padding:10px 14px;gap:6px;background:var(--bg);position:sticky;top:0;z-index:100;border-bottom:1.5px solid var(--border-soft);box-shadow:0 2px 8px rgba(13,27,62,.06)}
+.mobile-topbar{display:none;align-items:center;padding:10px 14px;gap:6px;background:var(--bg);border-bottom:1.5px solid var(--border-soft);box-shadow:0 2px 8px rgba(13,27,62,.06)}
 
 /* ── PAGE ── */
 .pg-hd{padding:24px 28px 20px;border-bottom:1.5px solid var(--border-soft);background:#fff}
