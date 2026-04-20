@@ -309,6 +309,7 @@ label.lbl{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bo
 @media (max-width: 767px) {
   #sidebar{
     position:fixed;left:0;top:0;bottom:0;
+    height:100%;
     transform:translateX(-100%);
     box-shadow:0 0 60px rgba(13,27,62,.4)
   }
