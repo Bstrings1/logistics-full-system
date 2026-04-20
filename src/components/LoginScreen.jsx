@@ -206,8 +206,8 @@ export default function LoginScreen() {
             <KMark size={38} />
             <span style={{ fontWeight: 800, fontSize: 26, letterSpacing: '-0.8px', color: '#0b1230' }}>{company}</span>
           </div>
-          <div style={{ fontSize: 12, color: '#858cab', letterSpacing: '0.02em', marginBottom: 14, textAlign: 'center' }}>
-            Logistics for <strong style={{ color: '#5b6385', fontWeight: 600 }}>ecommerce operators</strong> who sweat the details.
+          <div style={{ fontSize: 12, color: '#858cab', letterSpacing: '0.02em', marginBottom: 14, textAlign: 'center', fontStyle: 'italic' }}>
+            Your E-commerce Logistics Bro.
           </div>
 
           {/* Card */}
