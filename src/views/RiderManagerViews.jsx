@@ -89,7 +89,7 @@ function RiderLog({ filterP, fmtC, branch }) {
       <div className="pg-body" style={{padding:'14px 14px 48px'}}>
         <div className="card" style={{padding:12}}>
           <div className="g2 mb12" style={{gap:10}}>
-            <div><label className="lbl" style={{fontSize:14,marginBottom:4}}>Date</label><input className="inp" type="date" value={date} onChange={e => setDate(e.target.value)} style={{width:'100%',minWidth:0,height:48,padding:'0 12px',fontSize:16}} /></div>
+            <div><label className="lbl" style={{fontSize:14,marginBottom:4}}>Date</label><input className="inp" type="date" value={date} onChange={e => setDate(e.target.value)} style={{width:'100%',minWidth:0,height:48,padding:'0 12px',fontSize:16,lineHeight:'48px',display:'flex',alignItems:'center'}} /></div>
             <div><label className="lbl" style={{fontSize:14,marginBottom:4}}>Customer Name</label><input className="inp" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="e.g. Mrs Okonkwo" style={{height:48,padding:'0 12px',fontSize:16}} /></div>
             <div><label className="lbl" style={{fontSize:14,marginBottom:4}}>Phone</label><input className="inp" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="080..." style={{height:48,padding:'0 12px',fontSize:16}} /></div>
             <div><label className="lbl" style={{fontSize:14,marginBottom:4}}>Vendor</label>
