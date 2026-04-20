@@ -317,7 +317,9 @@ async function syncChanges(prev, next) {
 export function AppProvider({ children }) {
   const [cfg, setCfgState] = useState(INITIAL_CFG);
   const [db, setDbState] = useState(EMPTY_DB);
-  const [session, setSession] = useState(null);
+  const [session, setSessionState] = useState(() => {
+    try { const s = localStorage.getItem('kyne_session'); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
   const [viewAs, setViewAsState] = useState(null);
   const [period, setPeriod] = useState('today');
   const [rangeFrom, setRangeFrom] = useState('');
@@ -375,6 +377,12 @@ export function AppProvider({ children }) {
       .upsert({ id: 1, data: serializeCfg(cfg) })
       .then(({ error }) => { if (error) console.error('Config save error:', error); });
   }, [cfg]);
+
+  function setSession(val) {
+    if (val) localStorage.setItem('kyne_session', JSON.stringify(val));
+    else localStorage.removeItem('kyne_session');
+    setSessionState(val);
+  }
 
   function setDb(updater) {
     setDbState(prev => typeof updater === 'function' ? updater(prev) : updater);
