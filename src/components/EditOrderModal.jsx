@@ -37,14 +37,31 @@ export default function EditOrderModal() {
     const validProds = products.filter(p => p.name && Number(p.price) > 0).map(({ _key, ...p }) => ({
       ...p, price: Number(p.price), qty: Number(p.qty) || 1,
     }));
-    setDb(prev => ({
-      ...prev,
-      orders: prev.orders.map(o =>
-        o.id === editModalOrderId
-          ? { ...o, ...fields, products: validProds.length ? validProds : gp(o), status: 'Delivered' }
-          : o
-      ),
-    }));
+    const finalProds = validProds.length ? validProds : gp(order);
+    const branch = order.branch;
+
+    setDb(prev => {
+      const inv = JSON.parse(JSON.stringify(prev.inventory));
+      finalProds.forEach(p => {
+        const vendor = p.vendor;
+        const qty = Number(p.qty) || 1;
+        if (!vendor || !p.name) return;
+        if (!inv[branch]) inv[branch] = {};
+        if (!inv[branch][vendor]) inv[branch][vendor] = {};
+        if (!inv[branch][vendor][p.name]) inv[branch][vendor][p.name] = { received: 0, sentOut: 0, delivered: 0 };
+        inv[branch][vendor][p.name].delivered = (inv[branch][vendor][p.name].delivered || 0) + qty;
+      });
+
+      return {
+        ...prev,
+        inventory: inv,
+        orders: prev.orders.map(o =>
+          o.id === editModalOrderId
+            ? { ...o, ...fields, products: finalProds, status: 'Delivered' }
+            : o
+        ),
+      };
+    });
     close();
   }
 
