@@ -324,7 +324,15 @@ export function AppProvider({ children }) {
   const [period, setPeriod] = useState('today');
   const [rangeFrom, setRangeFrom] = useState('');
   const [rangeTo, setRangeTo] = useState('');
-  const [activeTab, setActiveTab] = useState('');
+  const [activeTab, setActiveTabState] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('kyne_tab');
+      if (saved) return saved;
+      const s = sessionStorage.getItem('kyne_session');
+      if (s) { const sess = JSON.parse(s); const tabs = getTabs(sess.role); return tabs[0]?.id || ''; }
+    } catch {}
+    return '';
+  });
   const [editModalOrderId, setEditModalOrderId] = useState(null);
   const [cfgPanelOpen, setCfgPanelOpen] = useState(false);
   const [vpSelected, setVpSelected] = useState('');
@@ -387,8 +395,13 @@ export function AppProvider({ children }) {
 
   function setSession(val) {
     if (val) sessionStorage.setItem('kyne_session', JSON.stringify(val));
-    else sessionStorage.removeItem('kyne_session');
+    else { sessionStorage.removeItem('kyne_session'); sessionStorage.removeItem('kyne_tab'); }
     setSessionState(val);
+  }
+
+  function setActiveTab(tab) {
+    try { sessionStorage.setItem('kyne_tab', tab); } catch {}
+    setActiveTabState(tab);
   }
 
   function setDb(updater) {
