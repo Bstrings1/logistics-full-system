@@ -307,6 +307,7 @@ label.lbl{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bo
    RESPONSIVE — MOBILE (< 768px)
 ────────────────────────────────── */
 @media (max-width: 767px) {
+  #content{overflow-y:visible !important;max-height:none !important;}
   #sidebar{
     position:fixed;left:0;top:0;bottom:0;
     height:100%;
