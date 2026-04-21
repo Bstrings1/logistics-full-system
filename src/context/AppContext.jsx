@@ -318,7 +318,7 @@ export function AppProvider({ children }) {
   const [cfg, setCfgState] = useState(INITIAL_CFG);
   const [db, setDbState] = useState(EMPTY_DB);
   const [session, setSessionState] = useState(() => {
-    try { const s = localStorage.getItem('kyne_session'); return s ? JSON.parse(s) : null; } catch { return null; }
+    try { const s = sessionStorage.getItem('kyne_session'); return s ? JSON.parse(s) : null; } catch { return null; }
   });
   const [viewAs, setViewAsState] = useState(null);
   const [period, setPeriod] = useState('today');
@@ -386,8 +386,8 @@ export function AppProvider({ children }) {
   }, [cfg]);
 
   function setSession(val) {
-    if (val) localStorage.setItem('kyne_session', JSON.stringify(val));
-    else localStorage.removeItem('kyne_session');
+    if (val) sessionStorage.setItem('kyne_session', JSON.stringify(val));
+    else sessionStorage.removeItem('kyne_session');
     setSessionState(val);
   }
 
