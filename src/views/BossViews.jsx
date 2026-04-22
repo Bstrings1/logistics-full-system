@@ -209,6 +209,7 @@ export default function BossViews({ tabId }) {
 // ─── Overview ─────────────────────────────────────────────────────────────────
 
 function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
+  const { setDb } = useApp();
   let totalOrdersVal = 0, totalCash = 0, totalPos = 0, totalExp = 0, totalNetExp = 0, totalSent = 0, totalStillToSend = 0;
   cfg.branches.forEach(b => {
     const c = branchCalc(b, cfg, db, filterP);
@@ -216,6 +217,14 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
     totalExp += c.exp; totalNetExp += c.netExpected; totalSent += c.sent; totalStillToSend += c.stillToSend;
   });
   const shortfallPays = Object.values(db.payments).filter(p => p.shortfall && p.shortfall > 0);
+  const unverifiedRems = filterP(db.remittances.filter(r => !r.verified));
+
+  function verify(id) {
+    setDb(prev => ({
+      ...prev,
+      remittances: prev.remittances.map(r => r.id === id ? { ...r, verified: true } : r),
+    }));
+  }
 
   return (
     <div className="bv">
@@ -274,6 +283,29 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
                       <td><Pill>{p.branch}</Pill></td>
                       <td className="bv-mono">{p.date}</td>
                       <td style={{ textAlign: 'right' }}><Money tone="bad">{fmtC(p.shortfall)}</Money></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {unverifiedRems.length > 0 && (
+          <>
+            <p className="bv-sec" style={{ color: '#d97706' }}>⏳ Pending Verification</p>
+            <div className="bv-tw">
+              <table>
+                <thead><tr><th>Branch</th><th>Amount</th><th>Bank</th><th>TXN ID</th><th>Date</th><th></th></tr></thead>
+                <tbody>
+                  {unverifiedRems.map((r, i) => (
+                    <tr key={i}>
+                      <td><Pill>{r.branch}</Pill></td>
+                      <td><Money tone="ok">{fmtC(r.amount)}</Money></td>
+                      <td>{r.bank || '—'}</td>
+                      <td className="bv-mono">{r.txID || '—'}</td>
+                      <td className="bv-mono">{r.date}</td>
+                      <td><button className="bv-btn amber" style={{ height: 30, fontSize: 12 }} onClick={() => verify(r.id)}>Verify →</button></td>
                     </tr>
                   ))}
                 </tbody>
