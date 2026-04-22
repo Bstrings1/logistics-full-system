@@ -236,7 +236,6 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
         <p className="bv-sec">Remittance Status</p>
         {cfg.branches.map((b, idx) => {
           const c = branchCalc(b, cfg, db, filterP);
-          const allSent = c.stillToSend <= 0 && c.sent > 0;
           return (
             <div key={b} className="bv-rowcard" style={{ padding: '14px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -246,11 +245,13 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
                   <div className="bv-b-meta">{c.delivered} orders · {fmtC(c.cash + c.pos)} collected</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  {allSent && !c.shortfall
-                    ? <><Blip type="ok">Confirmed</Blip><div style={{ fontSize: 11.5, color: '#858cab', marginTop: 2 }}>{fmtC(c.sent)} sent</div></>
-                    : c.shortfall > 0
-                      ? <><Blip type="bad">Shortfall</Blip><div style={{ fontSize: 11.5, color: '#e0425a', marginTop: 2 }}>{fmtC(c.shortfall)} unpaid</div></>
-                      : <><Blip type="warn">Pending</Blip><div style={{ fontSize: 11.5, color: '#858cab', marginTop: 2 }}>{fmtC(c.stillToSend)} to send</div></>}
+                  {c.netExpected <= 0
+                    ? <div style={{ fontSize: 13, fontWeight: 700, color: '#858cab' }}>₦0</div>
+                    : c.sent === 0
+                      ? <><div style={{ fontSize: 13, fontWeight: 700, color: '#e0425a' }}>⚠ Not Sent</div><div style={{ fontSize: 11.5, color: '#e0425a', marginTop: 2 }}>{fmtC(c.stillToSend)} pending</div></>
+                      : c.stillToSend > 0
+                        ? <><div style={{ fontSize: 13, fontWeight: 700, color: '#d97706' }}>⚠ Partial</div><div style={{ fontSize: 11.5, color: '#d97706', marginTop: 2 }}>{fmtC(c.stillToSend)} remaining</div></>
+                        : <><Blip type="ok">Confirmed</Blip><div style={{ fontSize: 11.5, color: '#858cab', marginTop: 2 }}>{fmtC(c.sent)} sent</div></>}
                 </div>
               </div>
             </div>
