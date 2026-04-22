@@ -174,7 +174,7 @@ function RemittanceCard({ rider, date, orders, payment: pay, fmtC, onSave, onSho
 }
 
 function MgrSend({ filterP, fmtC, branch }) {
-  const { db, setDb } = useApp();
+  const { db, setDb, period, rangeFrom } = useApp();
   const b = branch;
   const pays = Object.values(db.payments).filter(p => p.branch === b);
   const cash = pays.reduce((s, p) => s + (p.cash || 0), 0);
@@ -183,7 +183,8 @@ function MgrSend({ filterP, fmtC, branch }) {
   const sent = filterP(db.remittances.filter(r => r.branch === b)).reduce((s, r) => s + r.amount, 0);
   const rem = Math.max(0, netToSend - sent);
   const pos = pays.reduce((s, p) => s + (p.pos || 0), 0);
-  const [fields, setFields] = useState({ amount: '', date: TODAY, bank: '', account: '', txID: '' });
+  const txDate = period === 'range' && rangeFrom ? rangeFrom : TODAY;
+  const [fields, setFields] = useState({ amount: '', bank: '', account: '', txID: '' });
 
   function submit() {
     const amount = Number(fields.amount);
@@ -191,9 +192,9 @@ function MgrSend({ filterP, fmtC, branch }) {
     if (!fields.txID) return;
     setDb(prev => ({
       ...prev,
-      remittances: [...prev.remittances, { id: Date.now(), branch: b, amount, txID: fields.txID, date: fields.date, bank: fields.bank, account: fields.account }],
+      remittances: [...prev.remittances, { id: Date.now(), branch: b, amount, txID: fields.txID, date: txDate, bank: fields.bank, account: fields.account }],
     }));
-    setFields({ amount: '', date: TODAY, bank: '', account: '', txID: '' });
+    setFields({ amount: '', bank: '', account: '', txID: '' });
   }
 
   const prevRems = filterP(db.remittances.filter(r => r.branch === b));
@@ -202,6 +203,7 @@ function MgrSend({ filterP, fmtC, branch }) {
     <>
       <div className="pg-hd"><p className="pg-title">Send to Boss</p><p className="pg-sub">Cash (after expenses) goes to boss. POS is already direct.</p></div>
       <div className="pg-body">
+        <DateFilter />
         <div className="navy-hero mb20">
           <div className="mini-grid">
             <div className="mini-card"><p className="mini-l">Cash from Riders</p><p className="mini-v" style={{ color: '#93c5fd' }}>{fmtC(cash)}</p></div>
@@ -219,7 +221,6 @@ function MgrSend({ filterP, fmtC, branch }) {
           <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>Log Transfer</p>
           <div className="g2 mb12">
             <div><label className="lbl">Amount</label><PriceInput value={fields.amount} onChange={v => setFields(f => ({ ...f, amount: v }))} /></div>
-            <div><label className="lbl">Date</label><input className="inp" type="date" value={fields.date} onChange={e => setFields(f => ({ ...f, date: e.target.value }))} /></div>
             <div><label className="lbl">Bank Name</label><input className="inp" value={fields.bank} onChange={e => setFields(f => ({ ...f, bank: e.target.value }))} placeholder="GTBank, Opay..." /></div>
             <div><label className="lbl">Account Number</label><input className="inp" value={fields.account} onChange={e => setFields(f => ({ ...f, account: e.target.value }))} placeholder="0123456789" style={{ fontFamily: 'monospace' }} /></div>
             <div className="span2"><label className="lbl">Transaction ID <span style={{ color: 'var(--red)' }}>*</span></label><input className="inp" value={fields.txID} onChange={e => setFields(f => ({ ...f, txID: e.target.value }))} placeholder="TRF..." style={{ fontFamily: 'monospace', borderColor: fields.txID ? undefined : 'var(--amber-bd)' }} /></div>
