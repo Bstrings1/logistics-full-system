@@ -123,8 +123,8 @@ export const ICONS = {
 
 export function getTabs(role) {
   if (role === 'boss') return [
-    { id: 'overview', l: 'Overview' }, { id: 'branches', l: 'Branches' }, { id: 'orders', l: 'Orders' },
-    { id: 'riders', l: 'Riders' }, { id: 'remittances', l: 'Remittances' },
+    { id: 'overview', l: 'Overview' }, { id: 'branches', l: 'Branches & Remittances' }, { id: 'orders', l: 'Orders' },
+    { id: 'riders', l: 'Riders' },
     { id: 'vendor-pay', l: 'Vendor Payments' }, { id: 'inventory', l: 'Inventory' }, { id: 'tools', l: 'CEO Tools' },
   ];
   if (role === 'manager') return [

@@ -197,7 +197,6 @@ export default function BossViews({ tabId }) {
   if (tabId === 'branches')    return <BossBranches     filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'orders')      return <BossOrders       filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'riders')      return <BossRiders       fmtC={fmtC} cfg={cfg} db={db} />;
-  if (tabId === 'remittances') return <BossRemittances  filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'vendor-pay')  return <BossVendorPay    filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'inventory')   return <BossInventory    cfg={cfg} db={db} />;
   if (tabId === 'tools')       return <BossTools        setActiveTab={setActiveTab} cfg={cfg} />;
@@ -321,46 +320,95 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
   );
 }
 
-// ─── Branches ─────────────────────────────────────────────────────────────────
+// ─── Branches & Remittances ───────────────────────────────────────────────────
 
 function BossBranches({ filterP, fmtC, cfg, db }) {
+  const { setDb } = useApp();
+
+  function verify(id) {
+    setDb(prev => ({
+      ...prev,
+      remittances: prev.remittances.map(r => r.id === id ? { ...r, verified: true } : r),
+    }));
+  }
+
   return (
     <div className="bv">
       <style>{CSS}</style>
-      <div className="pg-hd"><p className="pg-title">Branches</p><p className="pg-sub">Per-branch cash position & delivery rate</p></div>
+      <div className="pg-hd"><p className="pg-title">Branches & Remittances</p><p className="pg-sub">Per-branch position, delivery rate & transfer verification</p></div>
       <div className="pg-body">
         <DateFilter />
         {cfg.branches.map(b => {
           const c = branchCalc(b, cfg, db, filterP);
           const allOrds = filterP(db.orders.filter(o => o.branch === b));
           const pct = allOrds.length ? Math.round((c.delivered / allOrds.length) * 100) : 0;
+          const rems = filterP(db.remittances.filter(r => r.branch === b));
+          const shortPays = Object.values(db.payments).filter(p => p.branch === b && p.shortfall > 0);
+          const unverified = rems.filter(r => !r.verified).length;
+          const balanced = c.stillToSend <= 0;
           return (
-            <div key={b} className="bv-rowcard">
+            <div key={b} className="bv-rowcard" style={{ padding: 0 }}>
               <div className="bv-rowcard-head">
                 <div className={`bv-b-av ${branchColor(cfg.branches, b)}`}>{b[0]}</div>
-                <div>
+                <div style={{ flex: 1 }}>
                   <div className="bv-b-name">{b}</div>
-                  <div className="bv-b-meta">{c.riders.length} riders</div>
+                  <div className="bv-b-meta">{c.riders.length} riders · {c.delivered}/{allOrds.length} delivered · {pct}%{unverified > 0 ? ` · ⏳ ${unverified} unverified` : ''}</div>
                 </div>
-                <div className="bv-b-side">
-                  <div style={{ fontWeight: 700, color: '#0b1230', fontSize: 14 }}>{c.delivered}/{allOrds.length} delivered</div>
-                  <div style={{ fontSize: 11.5, color: '#858cab', marginTop: 2 }}>{pct}% rate</div>
-                </div>
+                <Pill type={balanced ? 'g' : 'a'}>{balanced ? 'Balanced' : 'Pending'}</Pill>
               </div>
-              <div className="bv-mkpis" style={{}}>
+              <div className="bv-mkpis">
                 <div className="bv-mk ok"><div className="bv-mk-l">Cash</div><div className="bv-mk-v">{fmtC(c.cash)}</div></div>
                 <div className="bv-mk blue"><div className="bv-mk-l">POS</div><div className="bv-mk-v">{fmtC(c.pos)}</div></div>
+                <div className="bv-mk bad"><div className="bv-mk-l">Expenses</div><div className="bv-mk-v">{fmtC(c.exp)}</div></div>
                 <div className="bv-mk"><div className="bv-mk-l">Net Expected</div><div className="bv-mk-v">{fmtC(c.netExpected)}</div></div>
-                <div className="bv-mk ok"><div className="bv-mk-l">Cash Sent</div><div className="bv-mk-v">{fmtC(c.sent)}</div></div>
               </div>
-              <div style={{ padding: '10px 18px 14px' }}>
+              <div style={{ padding: '10px 18px 12px' }}>
                 <div className="bv-prog"><div className="bv-prog-fill" style={{ width: `${pct}%` }} /></div>
-                <div style={{ fontSize: 11, color: '#858cab', marginTop: 3 }}>{pct}% delivery rate</div>
               </div>
               <div className="bv-rowcard-foot">
-                <div>Expenses: <b style={{ color: '#e0425a' }}>{fmtC(c.exp)}</b></div>
+                <div>Cash Sent: <b style={{ color: '#1fa67a' }}>{fmtC(c.sent)}</b></div>
                 <div>Bonus payable: <b>{fmtC(c.bonus)}</b></div>
                 {c.shortfall > 0 && <div style={{ color: '#e0425a', fontWeight: 700 }}>⚠ Shortfall: {fmtC(c.shortfall)}</div>}
+              </div>
+              {shortPays.length > 0 && (
+                <div>
+                  <div style={{ margin: '0 18px', borderTop: '1px solid #fee2e2', paddingTop: 10, paddingBottom: 2 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#e0425a', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>⚠ Rider Shortfalls</div>
+                  </div>
+                  <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none', margin: '0 0 1px' }}>
+                    <table>
+                      <thead><tr><th>Rider</th><th>Expected</th><th>Paid</th><th>Shortfall</th><th>Date</th></tr></thead>
+                      <tbody>
+                        {shortPays.map((p, i) => (
+                          <tr key={i}>
+                            <td style={{ fontWeight: 600 }}>{p.rider}</td>
+                            <td><Money>{fmtC(p.expected || 0)}</Money></td>
+                            <td><Money tone="warn">{fmtC(p.cash || 0)}</Money></td>
+                            <td><Money tone="bad">{fmtC(p.shortfall)}</Money></td>
+                            <td className="bv-mono">{p.date}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none', borderTop: '1px solid #eef0f7' }}>
+                <table>
+                  <thead><tr><th>Amount</th><th>Bank</th><th>Account</th><th>TXN ID</th><th>Date</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {rems.length ? rems.map((r, i) => (
+                      <tr key={i}>
+                        <td><Money tone="ok">{fmtC(r.amount)}</Money></td>
+                        <td>{r.bank || '—'}</td>
+                        <td className="bv-mono">{r.account || '—'}</td>
+                        <td className="bv-mono">{r.txID || '—'}</td>
+                        <td className="bv-mono">{r.date}</td>
+                        <td>{r.verified ? <Blip type="ok">Verified</Blip> : <button className="bv-btn amber" style={{ height: 30, fontSize: 12 }} onClick={() => verify(r.id)}>Verify →</button>}</td>
+                      </tr>
+                    )) : <tr><td colSpan={6}><div className="bv-empty">No remittance logged</div></td></tr>}
+                  </tbody>
+                </table>
               </div>
             </div>
           );
@@ -468,103 +516,6 @@ function BossRiders({ fmtC, cfg, db }) {
                     </table>
                   </div>
               }
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Remittances ──────────────────────────────────────────────────────────────
-
-function BossRemittances({ filterP, fmtC, cfg, db }) {
-  const { setDb } = useApp();
-
-  function verify(id) {
-    setDb(prev => ({
-      ...prev,
-      remittances: prev.remittances.map(r => r.id === id ? { ...r, verified: true } : r),
-    }));
-  }
-
-  return (
-    <div className="bv">
-      <style>{CSS}</style>
-      <div className="pg-hd"><p className="pg-title">Remittances & Fraud Watch</p><p className="pg-sub">Verify each transfer after confirming in your bank</p></div>
-      <div className="pg-body">
-        <DateFilter />
-        {cfg.branches.map(b => {
-          const c = branchCalc(b, cfg, db, filterP);
-          const rems = filterP(db.remittances.filter(r => r.branch === b));
-          const shortPays = Object.values(db.payments).filter(p => p.branch === b && p.shortfall > 0);
-          const unverified = rems.filter(r => !r.verified).length;
-          const balanced = c.stillToSend <= 0;
-          return (
-            <div key={b} className="bv-rowcard" style={{ padding: 0 }}>
-              <div className="bv-rowcard-head">
-                <div className={`bv-b-av ${branchColor(cfg.branches, b)}`}>{b[0]}</div>
-                <div style={{ flex: 1 }}>
-                  <div className="bv-b-name">{b} Branch</div>
-                  <div className="bv-b-meta">{c.delivered} delivered · {c.riders.length} riders{unverified > 0 ? ` · ⏳ ${unverified} awaiting verification` : ''}</div>
-                </div>
-                <Pill type={balanced ? 'g' : 'a'}>{balanced ? 'Balanced' : 'Pending'}</Pill>
-              </div>
-
-              <div className="bv-mkpis">
-                <div className="bv-mk ok"><div className="bv-mk-l">Cash</div><div className="bv-mk-v">{fmtC(c.cash)}</div></div>
-                <div className="bv-mk blue"><div className="bv-mk-l">POS (direct)</div><div className="bv-mk-v">{fmtC(c.pos)}</div></div>
-                <div className="bv-mk bad"><div className="bv-mk-l">Expenses</div><div className="bv-mk-v">{fmtC(c.exp)}</div></div>
-                <div className="bv-mk"><div className="bv-mk-l">Net (cash−exp)</div><div className="bv-mk-v">{fmtC(c.netExpected)}</div></div>
-              </div>
-
-              {shortPays.length > 0 && (
-                <div style={{ padding: '0 0 0 0' }}>
-                  <div style={{ margin: '0 18px 0', borderTop: '1px solid #fee2e2', paddingTop: 12, paddingBottom: 2 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#e0425a', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 8 }}>⚠ Rider Shortfalls</div>
-                  </div>
-                  <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none', margin: '0 0 1px' }}>
-                    <table>
-                      <thead><tr><th>Rider</th><th>Expected</th><th>Paid</th><th>Shortfall</th><th>Date</th></tr></thead>
-                      <tbody>
-                        {shortPays.map((p, i) => (
-                          <tr key={i}>
-                            <td style={{ fontWeight: 600 }}>{p.rider}</td>
-                            <td><Money>{fmtC(p.expected || 0)}</Money></td>
-                            <td><Money tone="warn">{fmtC(p.cash || 0)}</Money></td>
-                            <td><Money tone="bad">{fmtC(p.shortfall)}</Money></td>
-                            <td className="bv-mono">{p.date}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none', borderTop: '1px solid #eef0f7' }}>
-                <table>
-                  <thead><tr><th>Amount</th><th>Bank</th><th>Account</th><th>TXN ID</th><th>Date</th><th>Status</th></tr></thead>
-                  <tbody>
-                    {rems.length ? rems.map((r, i) => (
-                      <tr key={i}>
-                        <td><Money tone="ok">{fmtC(r.amount)}</Money></td>
-                        <td>{r.bank || '—'}</td>
-                        <td className="bv-mono">{r.account || '—'}</td>
-                        <td className="bv-mono">{r.txID || '—'}</td>
-                        <td className="bv-mono">{r.date}</td>
-                        <td>
-                          {r.verified
-                            ? <Blip type="ok">Verified</Blip>
-                            : <button className="bv-btn amber" style={{ height: 30, fontSize: 12 }} onClick={() => verify(r.id)}>Verify →</button>}
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={6}><div className="bv-empty">No remittance logged</div></td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
             </div>
           );
         })}
