@@ -332,6 +332,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
   const expByRider = riderExpToday.reduce((acc, e) => { (acc[e.rider] = acc[e.rider] || []).push(e); return acc; }, {});
   const [riderFilter, setRiderFilter] = useState('');
   const [expFields, setExpFields] = useState({ rider: riders[0] || '', amount: '', desc: '' });
+  const [openDropdown, setOpenDropdown] = useState(null);
   const [completingId, setCompletingId] = useState(null);
   const [completingAmt, setCompletingAmt] = useState('');
 
@@ -441,15 +442,18 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                   </div>
                   <p style={{ fontWeight: 700, fontSize: 15 }}>{fmtC(ot(o))}</p>
                 </div>
-                <div className="col" style={{ gap: 6 }}>
-                  <div className="row" style={{ gap: 6 }}>
-                    <button className="btn btn-green btn-sm" style={{ flex: 1 }} onClick={() => { setEditModalStatus('Delivered'); setEditModalOrderId(o.id); }}>✓ Delivered</button>
-                    <button className="btn btn-green btn-sm" style={{ flex: 1, opacity: 0.85, background: '#0d9488' }} onClick={() => { setEditModalStatus('Completed'); setEditModalOrderId(o.id); }}>⊕ Completed</button>
-                  </div>
-                  <div className="row" style={{ gap: 6 }}>
-                    <button className="btn btn-red-soft btn-sm" style={{ flex: 1 }} onClick={() => setStatus(o.id, 'Failed')}>✗ Failed</button>
-                    <button className="btn btn-amber-soft btn-sm" style={{ flex: 1 }} onClick={() => setStatus(o.id, 'Replaced')}>↩ Replaced</button>
-                    <button className="btn btn-outline btn-xs" onClick={() => setStatus(o.id, 'Not Delivered')}>Not out</button>
+                <div className="row" style={{ gap: 6, position: 'relative' }}>
+                  <button className="btn btn-green btn-sm" style={{ flex: 1 }} onClick={() => { setEditModalStatus('Delivered'); setEditModalOrderId(o.id); setOpenDropdown(null); }}>✓ Delivered</button>
+                  <button className="btn btn-red-soft btn-sm" style={{ flex: 1 }} onClick={() => { setStatus(o.id, 'Not Delivered'); setOpenDropdown(null); }}>✗ Not Delivered</button>
+                  <div style={{ position: 'relative' }}>
+                    <button className="btn btn-outline btn-sm" onClick={() => setOpenDropdown(openDropdown === o.id ? null : o.id)}>More ▾</button>
+                    {openDropdown === o.id && (
+                      <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)', zIndex: 200, minWidth: 150, overflow: 'hidden' }}>
+                        <button style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: '#0d9488', cursor: 'pointer' }} onClick={() => { setEditModalStatus('Completed'); setEditModalOrderId(o.id); setOpenDropdown(null); }}>⊕ Completed</button>
+                        <button style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer' }} onClick={() => { setStatus(o.id, 'Failed'); setOpenDropdown(null); }}>✗ Failed</button>
+                        <button style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: 'var(--amber)', cursor: 'pointer' }} onClick={() => { setStatus(o.id, 'Replaced'); setOpenDropdown(null); }}>↩ Replaced</button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
