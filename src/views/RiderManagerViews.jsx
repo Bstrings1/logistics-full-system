@@ -417,7 +417,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
         <RiderFilter riders={riders} value={riderFilter} onChange={setRiderFilter} />
 
         <div className="card card-amber mb16">
-          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--amber)', marginBottom: 12 }}>⊟ Rider Expenses</p>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--amber)', marginBottom: 12 }}>💸 Rider Expenses</p>
           <div className="g3 mb8">
             <div>
               <label className="lbl">Rider</label>
