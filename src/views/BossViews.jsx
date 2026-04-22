@@ -258,16 +258,18 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
         })}
 
         <p className="bv-sec">Today's Totals</p>
-        <div className="bv-kpis c4" style={{}}>
-          <div className="bv-kpi"><div className="bv-kpi-l">Orders Value</div><div className="bv-kpi-v">{fmtC(totalOrdersVal)}</div></div>
-          <div className="bv-kpi"><div className="bv-kpi-l">Cash Collected</div><div className="bv-kpi-v ok">{fmtC(totalCash)}</div></div>
-          <div className="bv-kpi"><div className="bv-kpi-l">POS Collected</div><div className="bv-kpi-v blue">{fmtC(totalPos)}</div></div>
-          <div className="bv-kpi bad"><div className="bv-kpi-l">Branch Expenses</div><div className="bv-kpi-v">{fmtC(totalExp)}</div></div>
-        </div>
-        <div className="bv-kpis c3" style={{ marginBottom: 20 }}>
-          <div className="bv-kpi accent"><div className="bv-kpi-l">Net Expected</div><div className="bv-kpi-v">{fmtC(totalNetExp)}</div><div className="bv-kpi-s">cash + POS − expenses</div></div>
-          <div className="bv-kpi ok"><div className="bv-kpi-l">Cash Sent</div><div className="bv-kpi-v">{fmtC(totalSent)}</div><div className="bv-kpi-s">received in account</div></div>
-          <div className={`bv-kpi ${totalStillToSend > 0 ? 'warn' : 'ok'}`}><div className="bv-kpi-l">Still to Send</div><div className="bv-kpi-v">{fmtC(Math.max(0, totalStillToSend))}</div><div className="bv-kpi-s">{totalStillToSend > 0 ? 'not yet received' : 'all balanced'}</div></div>
+        <div className="navy-hero mb20">
+          <div className="mini-grid">
+            <div className="mini-card"><p className="mini-l">Orders Value</p><p className="mini-v" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmtC(totalOrdersVal)}</p></div>
+            <div className="mini-card"><p className="mini-l">Cash Collected</p><p className="mini-v" style={{ color: '#93c5fd', fontFamily: "'JetBrains Mono', monospace" }}>{fmtC(totalCash)}</p></div>
+            <div className="mini-card"><p className="mini-l">POS Collected</p><p className="mini-v" style={{ color: '#6ee7b7', fontFamily: "'JetBrains Mono', monospace" }}>{fmtC(totalPos)}</p></div>
+            <div className="mini-card"><p className="mini-l">Branch Expenses</p><p className="mini-v" style={{ color: '#fca5a5', fontFamily: "'JetBrains Mono', monospace" }}>−{fmtC(totalExp)}</p></div>
+          </div>
+          <div className="bottom-strip">
+            <div className="bs-cell"><p className="bs-l">Net Expected</p><p className="bs-v" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmtC(totalNetExp)}</p></div>
+            <div className="bs-cell"><p className="bs-l">Cash Sent</p><p className="bs-v" style={{ color: '#6ee7b7', fontFamily: "'JetBrains Mono', monospace" }}>{fmtC(totalSent)}</p></div>
+            <div className="bs-cell"><p className="bs-l">Still to Send</p><p className="bs-v" style={{ color: totalStillToSend > 0 ? '#fca5a5' : '#6ee7b7', fontFamily: "'JetBrains Mono', monospace" }}>{totalStillToSend <= 0 && totalSent > 0 ? '₦0 ✓' : fmtC(Math.max(0, totalStillToSend))}</p></div>
+          </div>
         </div>
 
         {shortfallPays.length > 0 && (
