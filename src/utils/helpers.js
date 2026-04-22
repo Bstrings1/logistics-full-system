@@ -3,6 +3,12 @@ export const TODAY = (() => {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 })();
 
+export const YESTERDAY = (() => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+})();
+
 export const REVENUE_STATUSES = ['Delivered', 'Completed', 'Replaced'];
 
 export function fmt(n, currency = '₦') {
@@ -69,6 +75,7 @@ export function getDups(orders) {
 }
 
 export function filterPeriod(list, period, rangeFrom, rangeTo) {
+  if (period === 'yesterday') return list.filter(o => o.date === YESTERDAY);
   if (period === 'today') return list.filter(o => o.date === TODAY);
   if (period === 'week') {
     const d = new Date(), dow = d.getDay();

@@ -5,7 +5,7 @@ export default function DateFilter() {
 
   return (
     <div className="df">
-      {['today', 'week', 'month', 'range', 'all'].map(p => (
+      {['yesterday', 'today', 'week', 'month', 'range', 'all'].map(p => (
         <button
           key={p}
           className={`df-btn${period === p ? ' active' : ''}`}
