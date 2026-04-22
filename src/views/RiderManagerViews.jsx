@@ -480,44 +480,44 @@ function RiderUpdate({ filterP, fmtC, branch }) {
 
         {(delivered.length > 0 || completed.length > 0) && (
           <>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.07em', margin: '16px 0 10px' }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.07em', margin: '16px 0 8px' }}>
               Delivered / Completed · {delivered.length + completed.length}
             </p>
-            <div className="card">
-              <table className="tbl">
-                <thead><tr><th>Customer</th><th>Rider</th><th>Status</th><th>Value</th></tr></thead>
-                <tbody>
-                  {[...delivered, ...completed].map(o => (
-                    <tr key={o.id}>
-                      <td style={{ fontWeight: 500 }}>{o.customerName}</td>
-                      <td style={{ fontSize: 12 }}>{o.rider}</td>
-                      <td><SBadge status={o.status} /></td>
-                      <td style={{ fontWeight: 600, color: 'var(--green)' }}>{fmtC(ot(o))}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="card" style={{ padding: '4px 0' }}>
+              {[...delivered, ...completed].map((o, i, arr) => (
+                <div key={o.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customerName}</p>
+                    <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider}</p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 8 }}>
+                    <SBadge status={o.status} />
+                    <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--green)', whiteSpace: 'nowrap' }}>{fmtC(ot(o))}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </>
         )}
 
         {(failed.length > 0 || replaced.length > 0) && (
           <>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '.07em', margin: '16px 0 10px' }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '.07em', margin: '16px 0 8px' }}>
               Failed / Replaced · {failed.length + replaced.length}
             </p>
-            <div className="card">
-              <table className="tbl">
-                <tbody>
-                  {[...failed, ...replaced].map(o => (
-                    <tr key={o.id}>
-                      <td style={{ fontWeight: 500 }}>{o.customerName}</td>
-                      <td><SBadge status={o.status} /></td>
-                      <td style={{ fontSize: 11, color: 'var(--t4)' }}>No revenue</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="card" style={{ padding: '4px 0' }}>
+              {[...failed, ...replaced].map((o, i, arr) => (
+                <div key={o.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customerName}</p>
+                    <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider}</p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 8 }}>
+                    <SBadge status={o.status} />
+                    <p style={{ fontSize: 11, color: 'var(--t4)', whiteSpace: 'nowrap' }}>No revenue</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </>
         )}
