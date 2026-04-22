@@ -39,26 +39,28 @@ function MgrRemittance({ filterP, fmtC, branch }) {
   const allRiderExps = (db.riderExpenses || []).filter(e => e.branch === b);
 
   function saveRemittance(key, netExpected, cashVal, posVal, giftVal) {
+    const netPOS = Math.max(0, posVal - giftVal);
     const rider = key.split('||')[0];
-    const shortfall = Math.max(0, netExpected - cashVal - posVal - giftVal);
+    const shortfall = Math.max(0, netExpected - cashVal - netPOS);
     setDb(prev => ({
       ...prev,
       payments: {
         ...prev.payments,
-        [key]: { ...prev.payments[key], branch: b, cash: cashVal, pos: posVal, riderGift: giftVal, expected: netExpected, shortfall, rider, date: TODAY, cleared: shortfall === 0 },
+        [key]: { ...prev.payments[key], branch: b, cash: cashVal, pos: netPOS, riderGift: giftVal, expected: netExpected, shortfall, rider, date: TODAY, cleared: shortfall === 0 },
       },
     }));
   }
 
   function logShortfall(key, netExpected, cashVal, posVal, giftVal) {
+    const netPOS = Math.max(0, posVal - giftVal);
     const rider = key.split('||')[0];
-    const shortfall = Math.max(0, netExpected - cashVal - posVal - giftVal);
+    const shortfall = Math.max(0, netExpected - cashVal - netPOS);
     if (!confirm(`Record shortfall of ${fmtC(shortfall)} for ${rider}?`)) return;
     setDb(prev => ({
       ...prev,
       payments: {
         ...prev.payments,
-        [key]: { ...prev.payments[key], branch: b, cash: cashVal, pos: posVal, riderGift: giftVal, expected: netExpected, shortfall, rider, date: TODAY, cleared: false },
+        [key]: { ...prev.payments[key], branch: b, cash: cashVal, pos: netPOS, riderGift: giftVal, expected: netExpected, shortfall, rider, date: TODAY, cleared: false },
       },
     }));
   }
@@ -76,7 +78,7 @@ function MgrRemittance({ filterP, fmtC, branch }) {
 
   return (
     <>
-      <div className="pg-hd"><p className="pg-title">Rider Remittance</p><p className="pg-sub">Cash + POS + Gift = Net Expected</p></div>
+      <div className="pg-hd"><p className="pg-title">Rider Remittance</p><p className="pg-sub">Cash + (POS − Gift) = Net Expected</p></div>
       <div className="pg-body">
         <DateFilter />
         <div className="g2 mb20">
@@ -161,7 +163,7 @@ function RemittanceCard({ rider, date, orders, riderExps, ordersTotal, expTotal,
             <div><label className="lbl">POS Received</label><PriceInput value={pos} onChange={setPos} /></div>
             <div><label className="lbl">Rider Gift</label><PriceInput value={gift} onChange={setGift} style={{ borderColor: 'var(--amber-bd)' }} /></div>
           </div>
-          <p style={{ fontSize: 11, color: 'var(--t4)', marginBottom: 10 }}>Cash + POS + Gift must equal the net expected amount.</p>
+          <p style={{ fontSize: 11, color: 'var(--t4)', marginBottom: 10 }}>Gift is deducted from POS first. Cash + (POS − Gift) = net expected.</p>
           <div className="row" style={{ gap: 8 }}>
             <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => { onSave(Number(cash) || 0, Number(pos) || 0, Number(gift) || 0); setCash(''); setPos(''); setGift(''); }}>Confirm</button>
             <button className="btn btn-red-soft btn-sm" onClick={() => { onShortfall(Number(cash) || 0, Number(pos) || 0, Number(gift) || 0); setCash(''); setPos(''); setGift(''); }}>Log Shortfall</button>
