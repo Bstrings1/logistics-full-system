@@ -21,11 +21,10 @@ export default function ManagerViews({ tabId }) {
   const fmtC = useFmt();
   const b = session.branch;
 
-  if (tabId === 'remittance') return <MgrRemittance filterP={filterP} fmtC={fmtC} branch={b} />;
   if (tabId === 'send') return <MgrSend filterP={filterP} fmtC={fmtC} branch={b} />;
   if (tabId === 'expenses') return <MgrExpenses filterP={filterP} fmtC={fmtC} branch={b} />;
   if (tabId === 'riders') return <MgrRiders filterP={filterP} fmtC={fmtC} branch={b} />;
-  return null;
+  return <MgrRemittance filterP={filterP} fmtC={fmtC} branch={b} />;
 }
 
 function MgrRemittance({ filterP, fmtC, branch }) {

@@ -21,11 +21,10 @@ export default function RiderManagerViews({ tabId }) {
   const fmtC = useFmt();
   const b = session.branch;
 
-  if (tabId === 'log') return <RiderLog filterP={filterP} fmtC={fmtC} branch={b} />;
   if (tabId === 'assign') return <RiderAssign filterP={filterP} fmtC={fmtC} branch={b} />;
   if (tabId === 'update') return <RiderUpdate filterP={filterP} fmtC={fmtC} branch={b} />;
   if (tabId === 'my-riders') return <RiderMyRiders filterP={filterP} fmtC={fmtC} branch={b} />;
-  return null;
+  return <RiderLog filterP={filterP} fmtC={fmtC} branch={b} />;
 }
 
 function RiderLog({ filterP, fmtC, branch }) {
