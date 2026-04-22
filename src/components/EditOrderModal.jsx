@@ -34,7 +34,9 @@ export default function EditOrderModal() {
   }
 
   function confirmDelivered() {
-    const validProds = products.filter(p => p.name && Number(p.price) > 0).map(({ _key, ...p }) => ({
+    const hasBlankPrice = products.some(p => p.name && (p.price === '' || p.price === null || p.price === undefined));
+    if (hasBlankPrice) { alert('Please enter a price for all products. Use 0 if needed.'); return; }
+    const validProds = products.filter(p => p.name).map(({ _key, ...p }) => ({
       ...p, price: Number(p.price), qty: Number(p.qty) || 1,
     }));
     const finalProds = validProds.length ? validProds : gp(order);
