@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import html2canvas from 'html2canvas';
 import { useApp } from '../context/AppContext';
 import { fmt, gp, filterPeriod, REVENUE_STATUSES } from '../utils/helpers';
 import { SBadge } from '../components/ui';
@@ -143,6 +145,7 @@ function VendorDeliveries({ vn, filterP }) {
 // ── Invoice ───────────────────────────────────────────────────────────────────
 function VendorInvoice({ vn, filterP }) {
   const { db, cfg } = useApp();
+  const [generating, setGenerating] = useState(false);
 
   function vt(o) {
     return gp(o).filter(p => p.vendor === vn).reduce((s, p) => s + (Number(p.price) || 0) * (Number(p.qty) || 1), 0);
@@ -160,108 +163,92 @@ function VendorInvoice({ vn, filterP }) {
   const outstanding = Math.max(0, netPayable - totalPaid);
   const currency = cfg.currency;
 
-  function generateInvoice() {
+  async function generateInvoice() {
+    setGenerating(true);
+    const today = new Date().toISOString().slice(0, 10);
+    const dateLabel = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
+    const outColor = outstanding <= 0 ? '#1fa67a' : '#e0425a';
+    const outBg = outstanding <= 0 ? '#f0fdf8' : '#fff5f5';
 
-    const rows = payments.length ? payments.map(p => `
-      <tr>
-        <td>${p.date || '—'}</td>
-        <td style="font-weight:700;color:#1fa67a">${fmt(p.amount, currency)}</td>
-        <td>${p.bank || '—'}</td>
-        <td style="font-family:monospace">${p.txID || '—'}</td>
-      </tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:16px">No payments recorded</td></tr>';
+    const payRows = payments.length
+      ? payments.map(p => `<tr>
+          <td style="padding:11px 14px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#3a4267">${p.date || '—'}</td>
+          <td style="padding:11px 14px;border-bottom:1px solid #f0f0f0;font-weight:800;color:#1fa67a;font-family:monospace">${fmt(p.amount, currency)}</td>
+          <td style="padding:11px 14px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#3a4267">${p.bank || '—'}</td>
+          <td style="padding:11px 14px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#3a4267;font-family:monospace">${p.txID || '—'}</td>
+        </tr>`).join('')
+      : `<tr><td colspan="4" style="padding:16px;text-align:center;color:#aaa;font-size:13px">No payments recorded</td></tr>`;
 
-    const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Invoice — ${vn}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#f6f7fb;padding:40px 24px;color:#0b1230;-webkit-font-smoothing:antialiased}
-    .page{max-width:720px;margin:0 auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.12)}
-    .header{background:linear-gradient(135deg,#0d1b3e 0%,#1a3a8f 60%,#1a56db 100%);padding:32px 36px;color:#fff}
-    .header-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
-    .logo{font-size:26px;font-weight:800;letter-spacing:-.8px}
-    .inv-label{font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:4px}
-    .inv-num{font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.9)}
-    .vendor-name{font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:6px}
-    .vendor-sub{font-size:13px;color:rgba(255,255,255,.6)}
-    .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:24px 36px;border-bottom:1px solid #eef0f7}
-    .s-card{background:#f6f8ff;border:1px solid #e0e7ff;border-radius:12px;padding:16px}
-    .s-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#858cab;margin-bottom:8px}
-    .s-val{font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#0b1230}
-    .s-val.green{color:#1fa67a}
-    .s-val.red{color:#e0425a}
-    .outstanding{display:flex;justify-content:space-between;align-items:center;padding:20px 36px;background:${outstanding <= 0 ? '#f0fdf8' : '#fff5f5'};border-bottom:1px solid #eef0f7}
-    .out-label{font-size:14px;font-weight:700;color:${outstanding <= 0 ? '#1fa67a' : '#e0425a'}}
-    .out-val{font-size:28px;font-weight:800;font-family:'JetBrains Mono',monospace;color:${outstanding <= 0 ? '#1fa67a' : '#e0425a'}}
-    .section{padding:24px 36px}
-    .sec-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#858cab;margin-bottom:14px}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    th{text-align:left;padding:10px 14px;background:#f6f7fb;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#858cab;border-bottom:1px solid #eef0f7}
-    td{padding:12px 14px;border-bottom:1px solid #f0f0f0;color:#3a4267}
-    tr:last-child td{border-bottom:none}
-    .footer{padding:20px 36px;border-top:1px solid #eef0f7;text-align:center;font-size:12px;color:#858cab}
-    @media print{body{padding:0;background:#fff}.page{box-shadow:none;border-radius:0}}
-  </style>
-</head>
-<body>
-<div class="page">
-  <div class="header">
-    <div class="header-top">
-      <div class="logo">${cfg.company || 'Kyne'}</div>
-      <div style="text-align:right">
-        <div class="inv-label">Invoice Date</div>
-        <div class="inv-num">${new Date().toISOString().slice(0,10)}</div>
-      </div>
-    </div>
-    <div class="vendor-name">${vn}</div>
-    <div class="vendor-sub">Vendor Statement · ${orders.length} delivered orders</div>
-  </div>
+    const node = document.createElement('div');
+    node.style.cssText = 'position:fixed;left:-9999px;top:0;width:720px;background:#f6f7fb;padding:32px 24px;font-family:system-ui,sans-serif;-webkit-font-smoothing:antialiased;z-index:-1';
+    node.innerHTML = `
+      <div style="background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.12)">
+        <div style="background:linear-gradient(135deg,#0d1b3e 0%,#1a3a8f 60%,#1a56db 100%);padding:32px 36px;color:#fff">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+            <div style="font-size:26px;font-weight:800;letter-spacing:-.8px">${cfg.company || 'Kyne'}</div>
+            <div style="text-align:right">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:4px">Invoice Date</div>
+              <div style="font-size:14px;font-weight:700;font-family:monospace;color:rgba(255,255,255,.9)">${today}</div>
+            </div>
+          </div>
+          <div style="font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:6px">${vn}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.6)">Vendor Statement · ${orders.length} delivered orders</div>
+        </div>
 
-  <div class="summary">
-    <div class="s-card">
-      <div class="s-label">Gross Value</div>
-      <div class="s-val">${fmt(grossTotal, currency)}</div>
-    </div>
-    <div class="s-card">
-      <div class="s-label">Delivery Fees</div>
-      <div class="s-val red">−${fmt(fees, currency)}</div>
-    </div>
-    <div class="s-card">
-      <div class="s-label">Net Payable</div>
-      <div class="s-val">${fmt(netPayable, currency)}</div>
-    </div>
-  </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:24px 36px;border-bottom:1px solid #eef0f7">
+          <div style="background:#f6f8ff;border:1px solid #e0e7ff;border-radius:12px;padding:16px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#858cab;margin-bottom:8px">Gross Value</div>
+            <div style="font-size:18px;font-weight:800;font-family:monospace;color:#0b1230">${fmt(grossTotal, currency)}</div>
+          </div>
+          <div style="background:#f6f8ff;border:1px solid #e0e7ff;border-radius:12px;padding:16px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#858cab;margin-bottom:8px">Delivery Fees</div>
+            <div style="font-size:18px;font-weight:800;font-family:monospace;color:#e0425a">−${fmt(fees, currency)}</div>
+          </div>
+          <div style="background:#f6f8ff;border:1px solid #e0e7ff;border-radius:12px;padding:16px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#858cab;margin-bottom:8px">Net Payable</div>
+            <div style="font-size:18px;font-weight:800;font-family:monospace;color:#0b1230">${fmt(netPayable, currency)}</div>
+          </div>
+        </div>
 
-  <div class="outstanding">
-    <div class="out-label">${outstanding <= 0 ? '✓ Fully Paid' : 'Outstanding Balance'}</div>
-    <div class="out-val">${outstanding <= 0 ? fmt(0, currency) : fmt(outstanding, currency)}</div>
-  </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 36px;background:${outBg};border-bottom:1px solid #eef0f7">
+          <div style="font-size:14px;font-weight:700;color:${outColor}">${outstanding <= 0 ? '✓ Fully Paid' : 'Outstanding Balance'}</div>
+          <div style="font-size:28px;font-weight:800;font-family:monospace;color:${outColor}">${outstanding <= 0 ? fmt(0, currency) : fmt(outstanding, currency)}</div>
+        </div>
 
-  <div class="section">
-    <div class="sec-title">Payment History</div>
-    <table>
-      <thead><tr><th>Date</th><th>Amount</th><th>Bank</th><th>TXN ID</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  </div>
+        <div style="padding:24px 36px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#858cab;margin-bottom:14px">Payment History</div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#f6f7fb">
+                <th style="text-align:left;padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#858cab;border-bottom:1px solid #eef0f7">Date</th>
+                <th style="text-align:left;padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#858cab;border-bottom:1px solid #eef0f7">Amount</th>
+                <th style="text-align:left;padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#858cab;border-bottom:1px solid #eef0f7">Bank</th>
+                <th style="text-align:left;padding:10px 14px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#858cab;border-bottom:1px solid #eef0f7">TXN ID</th>
+              </tr>
+            </thead>
+            <tbody>${payRows}</tbody>
+          </table>
+        </div>
 
-  <div class="footer">Generated by ${cfg.company || 'Kyne'} Logistics · ${new Date().toLocaleDateString('en-NG', { day:'numeric', month:'long', year:'numeric' })}</div>
-</div>
-</body>
-</html>`;
+        <div style="padding:20px 36px;border-top:1px solid #eef0f7;text-align:center;font-size:12px;color:#858cab">
+          Generated by ${cfg.company || 'Kyne'} Logistics · ${dateLabel}
+        </div>
+      </div>`;
 
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Invoice_${vn}_${new Date().toISOString().slice(0, 10)}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+    document.body.appendChild(node);
+    try {
+      const canvas = await html2canvas(node, { scale: 2, useCORS: true, backgroundColor: '#f6f7fb' });
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice_${vn}_${today}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } finally {
+      document.body.removeChild(node);
+      setGenerating(false);
+    }
   }
 
   return (
@@ -272,11 +259,13 @@ function VendorInvoice({ vn, filterP }) {
           <h2 className="vv-title">Invoice</h2>
           <p className="vv-sub">{vn}</p>
         </div>
-        <button className="vv-print-btn" onClick={generateInvoice}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
-          </svg>
-          Generate Invoice
+        <button className="vv-print-btn" onClick={generateInvoice} disabled={generating} style={{ opacity: generating ? 0.7 : 1 }}>
+          {generating ? '⏳ Generating...' : <>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download Invoice
+          </>}
         </button>
       </div>
 
