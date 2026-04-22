@@ -14,22 +14,21 @@ const CSS = `
 .bv-sec{font-size:11px;font-weight:700;color:#858cab;letter-spacing:.12em;text-transform:uppercase;margin:20px 0 10px}
 
 /* KPI cards */
-.bv-kpis{display:grid;gap:12px;margin-bottom:16px}
+.bv-kpis{background:linear-gradient(135deg,#0d1b3e 0%,#1a3a8f 60%,#1a56db 100%);display:grid;gap:10px;margin-bottom:16px;border-radius:16px;padding:16px;box-shadow:0 10px 32px rgba(13,27,62,.28)}
 .bv-kpis.c4{grid-template-columns:repeat(4,1fr)}
 .bv-kpis.c3{grid-template-columns:repeat(3,1fr)}
-.bv-kpi{background:#fff;border:1px solid #eef0f7;border-radius:14px;padding:16px 18px;
-  box-shadow:0 1px 2px rgba(11,18,48,.03)}
-.bv-kpi-l{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#858cab}
-.bv-kpi-v{font-size:21px;font-weight:700;margin-top:6px;font-family:'JetBrains Mono',monospace;color:#0b1230;font-variant-numeric:tabular-nums}
-.bv-kpi-s{font-size:12px;color:#858cab;margin-top:3px}
-.bv-kpi.ok .bv-kpi-v{color:#1fa67a}
-.bv-kpi.bad .bv-kpi-v{color:#e0425a}
-.bv-kpi.warn .bv-kpi-v{color:#e89b2f}
-.bv-kpi.blue .bv-kpi-v{color:#1f2fc4}
-.bv-kpi.accent{background:#eef2ff;border-color:#e0e7ff}
-.bv-kpi.accent .bv-kpi-l{color:#1f2fc4}
-.bv-kpi.accent .bv-kpi-v{color:#1f2fc4}
-.bv-kpi.accent .bv-kpi-s{color:#3b54ff;opacity:.7}
+.bv-kpi{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:14px 16px}
+.bv-kpi-l{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.bv-kpi-v{font-size:20px;font-weight:800;margin-top:6px;font-family:'JetBrains Mono',monospace;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.bv-kpi-s{font-size:11px;color:rgba(255,255,255,.45);margin-top:3px}
+.bv-kpi.ok .bv-kpi-v{color:#6ee7b7}
+.bv-kpi.bad .bv-kpi-v{color:#fca5a5}
+.bv-kpi.warn .bv-kpi-v{color:#fcd34d}
+.bv-kpi.blue .bv-kpi-v{color:#93c5fd}
+.bv-kpi.accent{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.25)}
+.bv-kpi.accent .bv-kpi-l{color:rgba(255,255,255,.7)}
+.bv-kpi.accent .bv-kpi-v{color:#fff}
+.bv-kpi.accent .bv-kpi-s{color:rgba(255,255,255,.5)}
 
 /* Rowcard */
 .bv-rowcard{background:#fff;border:1px solid #eef0f7;border-radius:14px;margin-bottom:12px;
