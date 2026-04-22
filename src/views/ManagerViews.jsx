@@ -36,30 +36,31 @@ function MgrRemittance({ filterP, fmtC, branch }) {
   const pays = Object.values(db.payments).filter(p => p.branch === b);
   const totalCash = pays.reduce((s, p) => s + (p.cash || 0), 0);
   const totalPOS = pays.reduce((s, p) => s + (p.pos || 0), 0);
+  const allRiderExps = (db.riderExpenses || []).filter(e => e.branch === b);
 
-  function saveRemittance(key, expected, cashVal, posVal, giftVal) {
+  function saveRemittance(key, netExpected, cashVal, posVal, giftVal) {
     const netPOS = Math.max(0, posVal - giftVal);
     const rider = key.split('||')[0];
-    const shortfall = Math.max(0, expected - cashVal - netPOS);
+    const shortfall = Math.max(0, netExpected - cashVal - netPOS);
     setDb(prev => ({
       ...prev,
       payments: {
         ...prev.payments,
-        [key]: { ...prev.payments[key], branch: b, cash: cashVal, pos: netPOS, riderGift: giftVal, expected, shortfall, rider, date: TODAY, cleared: shortfall === 0 },
+        [key]: { ...prev.payments[key], branch: b, cash: cashVal, pos: netPOS, riderGift: giftVal, expected: netExpected, shortfall, rider, date: TODAY, cleared: shortfall === 0 },
       },
     }));
   }
 
-  function logShortfall(key, expected, cashVal, posVal, giftVal) {
+  function logShortfall(key, netExpected, cashVal, posVal, giftVal) {
     const netPOS = Math.max(0, posVal - giftVal);
     const rider = key.split('||')[0];
-    const shortfall = Math.max(0, expected - cashVal - netPOS);
+    const shortfall = Math.max(0, netExpected - cashVal - netPOS);
     if (!confirm(`Record shortfall of ${fmtC(shortfall)} for ${rider}?`)) return;
     setDb(prev => ({
       ...prev,
       payments: {
         ...prev.payments,
-        [key]: { ...prev.payments[key], branch: b, cash: cashVal, pos: netPOS, riderGift: giftVal, expected, shortfall, rider, date: TODAY, cleared: false },
+        [key]: { ...prev.payments[key], branch: b, cash: cashVal, pos: netPOS, riderGift: giftVal, expected: netExpected, shortfall, rider, date: TODAY, cleared: false },
       },
     }));
   }
@@ -85,26 +86,36 @@ function MgrRemittance({ filterP, fmtC, branch }) {
           <div className="stat"><p className="stat-l">Total POS (direct to boss)</p><p className="stat-v" style={{ color: 'var(--green)' }}>{fmtC(totalPOS)}</p></div>
         </div>
         <div className="col">
-          {pairs.length ? pairs.map(({ rider, date }) => (
-            <RemittanceCard
-              key={`${rider}||${date}`}
-              rider={rider} date={date} branch={b}
-              orders={fo.filter(o => o.rider === rider && o.date === date)}
-              payment={db.payments[`${rider}||${date}`] || {}}
-              fmtC={fmtC}
-              onSave={(cash, pos, gift) => saveRemittance(`${rider}||${date}`, fo.filter(o => o.rider === rider && o.date === date).reduce((s, o) => s + ot(o), 0), cash, pos, gift)}
-              onShortfall={(cash, pos, gift) => logShortfall(`${rider}||${date}`, fo.filter(o => o.rider === rider && o.date === date).reduce((s, o) => s + ot(o), 0), cash, pos, gift)}
-              onPayShortfall={add => payShortfall(`${rider}||${date}`, add)}
-            />
-          )) : <div className="empty-box"><p className="empty-t">No delivered orders in period</p></div>}
+          {pairs.length ? pairs.map(({ rider, date }) => {
+            const rOrders = fo.filter(o => o.rider === rider && o.date === date);
+            const rExps = allRiderExps.filter(e => e.rider === rider && e.date === date);
+            const ordersTotal = rOrders.reduce((s, o) => s + ot(o), 0);
+            const expTotal = rExps.reduce((s, e) => s + e.amount, 0);
+            const netExpected = Math.max(0, ordersTotal - expTotal);
+            return (
+              <RemittanceCard
+                key={`${rider}||${date}`}
+                rider={rider} date={date}
+                orders={rOrders}
+                riderExps={rExps}
+                ordersTotal={ordersTotal}
+                expTotal={expTotal}
+                netExpected={netExpected}
+                payment={db.payments[`${rider}||${date}`] || {}}
+                fmtC={fmtC}
+                onSave={(cash, pos, gift) => saveRemittance(`${rider}||${date}`, netExpected, cash, pos, gift)}
+                onShortfall={(cash, pos, gift) => logShortfall(`${rider}||${date}`, netExpected, cash, pos, gift)}
+                onPayShortfall={add => payShortfall(`${rider}||${date}`, add)}
+              />
+            );
+          }) : <div className="empty-box"><p className="empty-t">No delivered orders in period</p></div>}
         </div>
       </div>
     </>
   );
 }
 
-function RemittanceCard({ rider, date, orders, payment: pay, fmtC, onSave, onShortfall, onPayShortfall }) {
-  const expected = orders.reduce((s, o) => s + ot(o), 0);
+function RemittanceCard({ rider, date, orders, riderExps, ordersTotal, expTotal, netExpected, payment: pay, fmtC, onSave, onShortfall, onPayShortfall }) {
   const [cash, setCash] = useState('');
   const [pos, setPos] = useState('');
   const [gift, setGift] = useState('');
@@ -122,7 +133,7 @@ function RemittanceCard({ rider, date, orders, payment: pay, fmtC, onSave, onSho
               <p style={{ fontWeight: 700, fontSize: 14 }}>{rider}</p>
               {hasShort && <span style={{ color: 'var(--red)', fontWeight: 700, fontSize: 12 }}>⚠ Shortfall: {fmtC(pay.shortfall)}</span>}
             </div>
-            <p style={{ fontSize: 11, color: 'var(--t4)' }}>{date} · {orders.length} orders · Expected: <strong>{fmtC(expected)}</strong></p>
+            <p style={{ fontSize: 11, color: 'var(--t4)' }}>{date} · {orders.length} orders · Orders: <strong>{fmtC(ordersTotal)}</strong>{expTotal > 0 ? <> · Expenses: <strong style={{ color: 'var(--amber)' }}>−{fmtC(expTotal)}</strong> · Net: <strong style={{ color: 'var(--green)' }}>{fmtC(netExpected)}</strong></> : null}</p>
           </div>
         </div>
         {cl && !hasShort ? <Badge text="Cleared" type="green" /> : hasShort ? <Badge text="Shortfall" type="red" /> : <Badge text="Pending" type="amber" />}
