@@ -503,7 +503,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                   </div>
                 </div>
               </div>
-            ))}
+            )})}
           </>
         )}
 
