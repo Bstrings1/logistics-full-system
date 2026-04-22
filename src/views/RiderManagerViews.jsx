@@ -488,7 +488,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                 <div key={o.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <p style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customerName}</p>
-                    <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider}</p>
+                    <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider} · {o.phone}</p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 8 }}>
                     <SBadge status={o.status} />
@@ -510,7 +510,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                 <div key={o.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <p style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customerName}</p>
-                    <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider}</p>
+                    <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider} · {o.phone}</p>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 8 }}>
                     <SBadge status={o.status} />
