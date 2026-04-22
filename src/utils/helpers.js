@@ -3,7 +3,7 @@ export const TODAY = (() => {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 })();
 
-export const REVENUE_STATUSES = ['Delivered', 'Completed'];
+export const REVENUE_STATUSES = ['Delivered', 'Completed', 'Replaced'];
 
 export function fmt(n, currency = '₦') {
   return currency + Number(n || 0).toLocaleString();
