@@ -552,25 +552,34 @@ function RiderMyRiders({ filterP, fmtC, branch }) {
       <div className="pg-hd"><p className="pg-title">My Riders</p></div>
       <div className="pg-body">
         <DateFilter />
-        <div className="card">
-          <table className="tbl">
-            <thead><tr><th>Rider</th><th>Deliveries</th><th>Value</th><th>Cycle Bonus</th></tr></thead>
-            <tbody>
-              {riders.map(name => {
-                const ords = fo.filter(o => o.rider === name && REVENUE_STATUSES.includes(o.status));
-                const val = ords.reduce((s, o) => s + ot(o), 0);
-                const cc = getBonusCycleOrders(name, db).length;
-                return (
-                  <tr key={name}>
-                    <td><div className="row" style={{ gap: 9 }}><Av name={name} size={26} /><p style={{ fontWeight: 500 }}>{name}</p></div></td>
-                    <td style={{ fontWeight: 600 }}>{ords.length}</td>
-                    <td style={{ fontWeight: 600 }}>{fmtC(val)}</td>
-                    <td style={{ fontWeight: 700, color: 'var(--purple)' }}>{fmtC(calcBonus(cc, name, cfg))}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {riders.map(name => {
+            const ords = fo.filter(o => o.rider === name && REVENUE_STATUSES.includes(o.status));
+            const val = ords.reduce((s, o) => s + ot(o), 0);
+            const cc = getBonusCycleOrders(name, db).length;
+            return (
+              <div key={name} className="card" style={{ padding: '12px 14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <Av name={name} size={30} />
+                  <p style={{ fontWeight: 700, fontSize: 14 }}>{name}</p>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                  <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '8px 10px' }}>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--t4)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Deliveries</p>
+                    <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--navy)' }}>{ords.length}</p>
+                  </div>
+                  <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '8px 10px' }}>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--t4)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Value</p>
+                    <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--navy)' }}>{fmtC(val)}</p>
+                  </div>
+                  <div style={{ background: 'var(--purple-lt)', borderRadius: 8, padding: '8px 10px' }}>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--purple)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Bonus</p>
+                    <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--purple)' }}>{fmtC(calcBonus(cc, name, cfg))}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </>
