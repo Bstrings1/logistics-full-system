@@ -41,7 +41,7 @@ export default function Sidebar({ sidebarOpen, onClose }) {
             let pill = null;
             if (t.id === 'assign' && unassignedCount > 0)
               pill = <span className="sb-pill">{unassignedCount}</span>;
-            if (t.id === 'remittances' && shortBranchCount > 0)
+            if (t.id === 'branches' && shortBranchCount > 0)
               pill = <span className="sb-pill-warn">⚠{shortBranchCount}</span>;
             return (
               <button

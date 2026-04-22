@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { TODAY } from '../utils/helpers';
+import { TODAY, getTabs } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 
 const AppContext = createContext(null);
@@ -395,8 +395,15 @@ export function AppProvider({ children }) {
   }, [cfg]);
 
   function setSession(val) {
-    if (val) sessionStorage.setItem('kyne_session', JSON.stringify(val));
-    else { sessionStorage.removeItem('kyne_session'); sessionStorage.removeItem('kyne_tab'); }
+    if (val) {
+      sessionStorage.setItem('kyne_session', JSON.stringify(val));
+      const firstTab = getTabs(val.role)[0]?.id || '';
+      sessionStorage.setItem('kyne_tab', firstTab);
+      setActiveTabState(firstTab);
+    } else {
+      sessionStorage.removeItem('kyne_session');
+      sessionStorage.removeItem('kyne_tab');
+    }
     setSessionState(val);
   }
 
