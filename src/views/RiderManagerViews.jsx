@@ -473,10 +473,9 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                     <p style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customerName}</p>
                     <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider} · {o.phone}</p>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 8 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, marginLeft: 8 }}>
                     <SBadge status={o.status} />
                     <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--green)', whiteSpace: 'nowrap' }}>{fmtC(ot(o))}</p>
-                    <button style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, background: 'var(--purple-lt)', color: 'var(--purple)', border: '1px solid var(--purple-bd)', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => { setEditModalStatus(o.status); setEditModalOrderId(o.id); }}>Edit</button>
                   </div>
                 </div>
               ))}
