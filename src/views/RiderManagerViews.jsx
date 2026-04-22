@@ -401,7 +401,13 @@ function RiderUpdate({ filterP, fmtC, branch }) {
     setExpFields(f => ({ ...f, amount: '', desc: '' }));
   }
 
-  const filtPending = riderFilter ? pending.filter(o => o.rider.toLowerCase().includes(riderFilter.toLowerCase())) : pending;
+  const riderMatch = o => !riderFilter || o.rider.toLowerCase().includes(riderFilter.toLowerCase());
+  const filtPending = pending.filter(riderMatch);
+  const filtDelivered = delivered.filter(riderMatch);
+  const filtCompleted = completed.filter(riderMatch);
+  const filtReplaced = replaced.filter(riderMatch);
+  const filtFailed = failed.filter(riderMatch);
+  const filtNotDelivered = notDelivered.filter(riderMatch);
 
   return (
     <>
@@ -490,13 +496,13 @@ function RiderUpdate({ filterP, fmtC, branch }) {
           </>
         )}
 
-        {(delivered.length > 0 || completed.length > 0 || replaced.length > 0) && (
+        {(filtDelivered.length > 0 || filtCompleted.length > 0 || filtReplaced.length > 0) && (
           <>
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.07em', margin: '16px 0 8px' }}>
-              Delivered / Completed / Replaced · {delivered.length + completed.length + replaced.length}
+              Delivered / Completed / Replaced · {filtDelivered.length + filtCompleted.length + filtReplaced.length}
             </p>
             <div className="card" style={{ padding: '4px 0' }}>
-              {[...delivered, ...completed, ...replaced].map((o, i, arr) => (
+              {[...filtDelivered, ...filtCompleted, ...filtReplaced].map((o, i, arr) => (
                 <div key={o.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <p style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customerName}</p>
@@ -512,13 +518,13 @@ function RiderUpdate({ filterP, fmtC, branch }) {
           </>
         )}
 
-        {(notDelivered.length > 0 || failed.length > 0) && (
+        {(filtNotDelivered.length > 0 || filtFailed.length > 0) && (
           <>
             <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--red)', textTransform: 'uppercase', letterSpacing: '.07em', margin: '16px 0 8px' }}>
-              Not Delivered / Failed · {notDelivered.length + failed.length}
+              Not Delivered / Failed · {filtNotDelivered.length + filtFailed.length}
             </p>
             <div className="card" style={{ padding: '4px 0' }}>
-              {[...notDelivered, ...failed].map((o, i, arr) => (
+              {[...filtNotDelivered, ...filtFailed].map((o, i, arr) => (
                 <div key={o.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <p style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customerName}</p>
@@ -533,7 +539,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
           </>
         )}
 
-        {!pending.length && !delivered.length && !completed.length && !failed.length && !replaced.length && !notDelivered.length && (
+        {!filtPending.length && !filtDelivered.length && !filtCompleted.length && !filtFailed.length && !filtReplaced.length && !filtNotDelivered.length && (
           <div className="empty-box"><p className="empty-t">No orders in this period</p></div>
         )}
       </div>
