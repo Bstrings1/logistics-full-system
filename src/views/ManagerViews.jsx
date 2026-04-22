@@ -39,28 +39,28 @@ function MgrRemittance({ filterP, fmtC, branch }) {
   const allRiderExps = (db.riderExpenses || []).filter(e => e.branch === b);
 
   function saveRemittance(key, netExpected, cashVal, posVal, giftVal) {
-    const netCash = Math.max(0, cashVal - giftVal);
+    const netPOS = Math.max(0, posVal - giftVal);
     const rider = key.split('||')[0];
-    const shortfall = Math.max(0, netExpected - netCash - posVal);
+    const shortfall = Math.max(0, netExpected - cashVal - netPOS);
     setDb(prev => ({
       ...prev,
       payments: {
         ...prev.payments,
-        [key]: { ...prev.payments[key], branch: b, cash: netCash, pos: posVal, riderGift: giftVal, expected: netExpected, shortfall, rider, date: TODAY, cleared: shortfall === 0 },
+        [key]: { ...prev.payments[key], branch: b, cash: cashVal, pos: netPOS, riderGift: giftVal, expected: netExpected, shortfall, rider, date: TODAY, cleared: shortfall === 0 },
       },
     }));
   }
 
   function logShortfall(key, netExpected, cashVal, posVal, giftVal) {
-    const netCash = Math.max(0, cashVal - giftVal);
+    const netPOS = Math.max(0, posVal - giftVal);
     const rider = key.split('||')[0];
-    const shortfall = Math.max(0, netExpected - netCash - posVal);
+    const shortfall = Math.max(0, netExpected - cashVal - netPOS);
     if (!confirm(`Record shortfall of ${fmtC(shortfall)} for ${rider}?`)) return;
     setDb(prev => ({
       ...prev,
       payments: {
         ...prev.payments,
-        [key]: { ...prev.payments[key], branch: b, cash: netCash, pos: posVal, riderGift: giftVal, expected: netExpected, shortfall, rider, date: TODAY, cleared: false },
+        [key]: { ...prev.payments[key], branch: b, cash: cashVal, pos: netPOS, riderGift: giftVal, expected: netExpected, shortfall, rider, date: TODAY, cleared: false },
       },
     }));
   }
@@ -78,7 +78,7 @@ function MgrRemittance({ filterP, fmtC, branch }) {
 
   return (
     <>
-      <div className="pg-hd"><p className="pg-title">Rider Remittance</p><p className="pg-sub">Cash · POS · Gift (gift deducted from cash)</p></div>
+      <div className="pg-hd"><p className="pg-title">Rider Remittance</p><p className="pg-sub">Cash · POS · Gift (gift deducted from POS)</p></div>
       <div className="pg-body">
         <DateFilter />
         <div className="g2 mb20">
@@ -150,7 +150,7 @@ function RemittanceCard({ rider, date, orders, riderExps, ordersTotal, expTotal,
             <p style={{ fontWeight: 700, color: 'var(--green)' }}>{fmtC(pay.pos || 0)}</p>
           </div>
           <div style={{ background: 'var(--amber-lt)', border: '1.5px solid var(--amber-bd)', borderRadius: 'var(--r)', padding: 10, textAlign: 'center' }}>
-            <p style={{ fontSize: 10, color: 'var(--amber)', marginBottom: 3 }}>Gift (from Cash)</p>
+            <p style={{ fontSize: 10, color: 'var(--amber)', marginBottom: 3 }}>Gift (from POS)</p>
             <p style={{ fontWeight: 700, color: 'var(--amber)' }}>{fmtC(pay.riderGift || 0)}</p>
           </div>
         </div>
@@ -161,7 +161,7 @@ function RemittanceCard({ rider, date, orders, riderExps, ordersTotal, expTotal,
           <div className="g3 mb10">
             <div><label className="lbl">Cash Received</label><PriceInput value={cash} onChange={setCash} /></div>
             <div><label className="lbl">POS Received</label><PriceInput value={pos} onChange={setPos} /></div>
-            <div><label className="lbl">Rider Gift (from Cash)</label><PriceInput value={gift} onChange={setGift} style={{ borderColor: 'var(--amber-bd)' }} /></div>
+            <div><label className="lbl">Rider Gift (from POS)</label><PriceInput value={gift} onChange={setGift} style={{ borderColor: 'var(--amber-bd)' }} /></div>
           </div>
           <p style={{ fontSize: 11, color: 'var(--t4)', marginBottom: 10 }}>Gift is deducted from cash. Cash goes through remittance. POS goes direct to boss.</p>
           <div className="row" style={{ gap: 8 }}>
