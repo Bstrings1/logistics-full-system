@@ -318,7 +318,7 @@ function RiderAssign({ filterP, fmtC, branch }) {
 }
 
 function RiderUpdate({ filterP, fmtC, branch }) {
-  const { db, setDb, setEditModalOrderId } = useApp();
+  const { db, setDb, setEditModalOrderId, setEditModalStatus } = useApp();
   const b = branch;
   const riders = db.riders[b] || [];
   const fo = filterP(db.orders.filter(o => o.branch === b));
@@ -443,8 +443,8 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                 </div>
                 <div className="col" style={{ gap: 6 }}>
                   <div className="row" style={{ gap: 6 }}>
-                    <button className="btn btn-green btn-sm" style={{ flex: 1 }} onClick={() => setEditModalOrderId(o.id)}>✓ Delivered</button>
-                    <button className="btn btn-green btn-sm" style={{ flex: 1, opacity: 0.85, background: '#0d9488' }} onClick={() => startComplete(o)}>⊕ Completed</button>
+                    <button className="btn btn-green btn-sm" style={{ flex: 1 }} onClick={() => { setEditModalStatus('Delivered'); setEditModalOrderId(o.id); }}>✓ Delivered</button>
+                    <button className="btn btn-green btn-sm" style={{ flex: 1, opacity: 0.85, background: '#0d9488' }} onClick={() => { setEditModalStatus('Completed'); setEditModalOrderId(o.id); }}>⊕ Completed</button>
                   </div>
                   <div className="row" style={{ gap: 6 }}>
                     <button className="btn btn-red-soft btn-sm" style={{ flex: 1 }} onClick={() => setStatus(o.id, 'Failed')}>✗ Failed</button>

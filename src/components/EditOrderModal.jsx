@@ -8,7 +8,7 @@ const S = {
 };
 
 export default function EditOrderModal() {
-  const { db, setDb, editModalOrderId, setEditModalOrderId } = useApp();
+  const { db, setDb, editModalOrderId, setEditModalOrderId, editModalStatus } = useApp();
   const [fields, setFields] = useState({ customerName: '', phone: '', address: '' });
   const [products, setProducts] = useState([]);
 
@@ -57,7 +57,7 @@ export default function EditOrderModal() {
         inventory: inv,
         orders: prev.orders.map(o =>
           o.id === editModalOrderId
-            ? { ...o, ...fields, products: finalProds, status: 'Delivered' }
+            ? { ...o, ...fields, products: finalProds, status: editModalStatus || 'Delivered' }
             : o
         ),
       };
@@ -127,7 +127,7 @@ export default function EditOrderModal() {
 
         {/* Sticky confirm button */}
         <div style={{ padding: '10px 16px 14px', borderTop: '1.5px solid var(--border-soft)', flexShrink: 0 }}>
-          <button className="btn btn-primary btn-full" onClick={confirmDelivered}>✓ Confirm Delivered</button>
+          <button className="btn btn-primary btn-full" onClick={confirmDelivered}>✓ Confirm {editModalStatus || 'Delivered'}</button>
         </div>
 
       </div>

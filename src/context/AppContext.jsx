@@ -334,6 +334,7 @@ export function AppProvider({ children }) {
     return '';
   });
   const [editModalOrderId, setEditModalOrderId] = useState(null);
+  const [editModalStatus, setEditModalStatus] = useState('Delivered');
   const [cfgPanelOpen, setCfgPanelOpen] = useState(false);
   const [vpSelected, setVpSelected] = useState('');
   const [loading, setLoading] = useState(true);
@@ -428,6 +429,7 @@ export function AppProvider({ children }) {
       rangeTo, setRangeTo,
       activeTab, setActiveTab,
       editModalOrderId, setEditModalOrderId,
+      editModalStatus, setEditModalStatus,
       cfgPanelOpen, setCfgPanelOpen,
       vpSelected, setVpSelected,
       loading,
