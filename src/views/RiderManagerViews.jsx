@@ -408,6 +408,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
   const filtReplaced = replaced.filter(riderMatch);
   const filtFailed = failed.filter(riderMatch);
   const filtNotDelivered = notDelivered.filter(riderMatch);
+  const pendingDups = getDups(pending);
 
   return (
     <>
@@ -450,9 +451,19 @@ function RiderUpdate({ filterP, fmtC, branch }) {
 
         {filtPending.length > 0 && (
           <>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--amber)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 10 }}>Pending · {filtPending.length}</p>
-            {filtPending.map(o => (
-              <div key={o.id} className="card mb8">
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--amber)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 10 }}>
+              Pending · {filtPending.length}{pendingDups.size > 0 ? ` · ⚠ ${pendingDups.size} possible duplicate${pendingDups.size > 1 ? 's' : ''}` : ''}
+            </p>
+            {filtPending.map(o => {
+              const isDup = pendingDups.has(o.id);
+              return (
+              <div key={o.id} className={`card${isDup ? ' card-red' : ''} mb8`}>
+                {isDup && (
+                  <div style={{ background: 'var(--red-lt)', border: '1.5px solid var(--red-bd)', borderRadius: 'var(--r)', padding: '8px 12px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>⚠</span>
+                    <div><p style={{ fontSize: 12, fontWeight: 700, color: 'var(--red)' }}>Possible duplicate</p><p style={{ fontSize: 11, color: 'var(--amber)' }}>Same phone or name</p></div>
+                  </div>
+                )}
                 {String(completingId) === String(o.id) && (
                   <div style={{ background: 'var(--green-lt)', border: '1.5px solid var(--green-bd)', borderRadius: 'var(--r)', padding: '12px 14px', marginBottom: 12 }}>
                     <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)', marginBottom: 4 }}>Confirm Completion</p>
