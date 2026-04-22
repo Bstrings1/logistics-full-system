@@ -386,12 +386,12 @@ function RiderUpdate({ filterP, fmtC, branch }) {
           <div className="g3 mb8">
             <div>
               <label className="lbl">Rider</label>
-              <select className="inp" value={expFields.rider} onChange={e => setExpFields(f => ({ ...f, rider: e.target.value }))}>
+              <select className="inp" value={expFields.rider} onChange={e => setExpFields(f => ({ ...f, rider: e.target.value }))} style={{padding:'6px 8px',fontSize:13}}>
                 {riders.map(r => <option key={r}>{r}</option>)}
               </select>
             </div>
-            <div><label className="lbl">Amount (₦)</label><input className="inp" type="number" value={expFields.amount} placeholder="0" onChange={e => setExpFields(f => ({ ...f, amount: e.target.value }))} /></div>
-            <div><label className="lbl">Description</label><input className="inp" value={expFields.desc} placeholder="Fuel, repair..." onChange={e => setExpFields(f => ({ ...f, desc: e.target.value }))} /></div>
+            <div><label className="lbl">Amount (₦)</label><input className="inp" type="number" value={expFields.amount} placeholder="0" onChange={e => setExpFields(f => ({ ...f, amount: e.target.value }))} style={{padding:'6px 8px',fontSize:13}} /></div>
+            <div><label className="lbl">Description</label><input className="inp" value={expFields.desc} placeholder="Fuel, repair..." onChange={e => setExpFields(f => ({ ...f, desc: e.target.value }))} style={{padding:'6px 8px',fontSize:13}} /></div>
           </div>
           <button className="btn btn-amber-soft btn-sm" onClick={saveRiderExp}>Save Expense</button>
           {Object.keys(expByRider).length > 0 && (
