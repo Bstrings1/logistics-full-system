@@ -442,16 +442,16 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                   </div>
                   <p style={{ fontWeight: 700, fontSize: 15 }}>{fmtC(ot(o))}</p>
                 </div>
-                <div className="row" style={{ gap: 6, position: 'relative' }}>
-                  <button className="btn btn-green btn-sm" style={{ flex: 1 }} onClick={() => { setEditModalStatus('Delivered'); setEditModalOrderId(o.id); setOpenDropdown(null); }}>✓ Delivered</button>
-                  <button className="btn btn-red-soft btn-sm" style={{ flex: 1 }} onClick={() => { setStatus(o.id, 'Not Delivered'); setOpenDropdown(null); }}>✗ Not Delivered</button>
-                  <div style={{ position: 'relative' }}>
-                    <button className="btn btn-outline btn-sm" onClick={() => setOpenDropdown(openDropdown === o.id ? null : o.id)}>More ▾</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <button style={{ flex: 1, padding: '7px 0', background: 'var(--green)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }} onClick={() => { setEditModalStatus('Delivered'); setEditModalOrderId(o.id); setOpenDropdown(null); }}>✓ Delivered</button>
+                  <button style={{ flex: 1, padding: '7px 0', background: 'var(--red-lt)', color: 'var(--red)', border: '1.5px solid var(--red-bd)', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }} onClick={() => { setStatus(o.id, 'Not Delivered'); setOpenDropdown(null); }}>✗ Not Delivered</button>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <button style={{ padding: '7px 10px', background: '#f1f5f9', color: 'var(--t3)', border: '1.5px solid var(--border)', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer' }} onClick={() => setOpenDropdown(openDropdown === o.id ? null : o.id)}>• • •</button>
                     {openDropdown === o.id && (
-                      <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)', zIndex: 200, minWidth: 150, overflow: 'hidden' }}>
-                        <button style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: '#0d9488', cursor: 'pointer' }} onClick={() => { setEditModalStatus('Completed'); setEditModalOrderId(o.id); setOpenDropdown(null); }}>⊕ Completed</button>
-                        <button style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer' }} onClick={() => { setStatus(o.id, 'Failed'); setOpenDropdown(null); }}>✗ Failed</button>
-                        <button style={{ display: 'block', width: '100%', padding: '10px 16px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: 'var(--amber)', cursor: 'pointer' }} onClick={() => { setStatus(o.id, 'Replaced'); setOpenDropdown(null); }}>↩ Replaced</button>
+                      <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.15)', zIndex: 200, minWidth: 140, overflow: 'hidden' }}>
+                        <button style={{ display: 'block', width: '100%', padding: '11px 14px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', borderBottom: '1px solid var(--border-soft)', color: '#0d9488', cursor: 'pointer' }} onClick={() => { setEditModalStatus('Completed'); setEditModalOrderId(o.id); setOpenDropdown(null); }}>⊕ Completed</button>
+                        <button style={{ display: 'block', width: '100%', padding: '11px 14px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', borderBottom: '1px solid var(--border-soft)', color: 'var(--red)', cursor: 'pointer' }} onClick={() => { setStatus(o.id, 'Failed'); setOpenDropdown(null); }}>✗ Failed</button>
+                        <button style={{ display: 'block', width: '100%', padding: '11px 14px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: 'var(--amber)', cursor: 'pointer' }} onClick={() => { setStatus(o.id, 'Replaced'); setOpenDropdown(null); }}>↩ Replaced</button>
                       </div>
                     )}
                   </div>
