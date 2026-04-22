@@ -1,13 +1,14 @@
 import { avColors, statusBadgeType } from '../utils/helpers';
 
 export function Av({ name, size = 30 }) {
-  const [bg, color] = avColors(name);
+  const safeName = name || '?';
+  const [bg, color] = avColors(safeName);
   return (
     <div
       className="av"
       style={{ width: size, height: size, background: bg, color, fontSize: Math.round(size * 0.36) }}
     >
-      {name[0].toUpperCase()}
+      {safeName[0].toUpperCase()}
     </div>
   );
 }

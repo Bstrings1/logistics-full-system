@@ -20,7 +20,8 @@ export function avColors(name) {
     ['#e0e7ff','#4338ca'],['#dcfce7','#166534'],['#fef9c3','#854d0e'],
     ['#fee2e2','#991b1b'],['#fce7f3','#9d174d'],['#e0f2fe','#075985'],
   ];
-  return p[name.charCodeAt(0) % p.length];
+  const code = (name || '?').charCodeAt(0);
+  return p[code % p.length];
 }
 
 export function gp(o) {
