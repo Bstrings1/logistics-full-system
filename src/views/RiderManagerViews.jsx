@@ -317,6 +317,38 @@ function RiderAssign({ filterP, fmtC, branch }) {
   );
 }
 
+function RiderFilter({ riders, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const filtered = riders.filter(r => r.toLowerCase().includes(value.toLowerCase()));
+  return (
+    <div style={{ position: 'relative', marginBottom: 14 }}>
+      <div className="search-wrap">
+        <span className="s-ico">🔍</span>
+        <input
+          className="inp"
+          placeholder="Filter by rider..."
+          value={value}
+          onChange={e => { onChange(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          style={{ fontSize: 13, padding: '8px 14px 8px 34px' }}
+        />
+        {value && <button onClick={() => { onChange(''); setOpen(false); }} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', fontSize: 16, color: 'var(--t4)', cursor: 'pointer', lineHeight: 1 }}>×</button>}
+      </div>
+      {open && filtered.length > 0 && (
+        <div style={{ position: 'absolute', top: '105%', left: 0, right: 0, background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.12)', zIndex: 200, maxHeight: 200, overflowY: 'auto' }}>
+          {value === '' && <div style={{ padding: '8px 14px', fontSize: 11, color: 'var(--t4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>All riders</div>}
+          {filtered.map(r => (
+            <button key={r} onMouseDown={() => { onChange(r); setOpen(false); }} style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', fontSize: 13, fontWeight: 500, background: 'none', border: 'none', borderBottom: '1px solid var(--border-soft)', color: 'var(--text)', cursor: 'pointer' }}>
+              {r}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RiderUpdate({ filterP, fmtC, branch }) {
   const { db, setDb, setEditModalOrderId, setEditModalStatus } = useApp();
   const b = branch;
@@ -376,10 +408,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
       <div className="pg-hd"><p className="pg-title">Update Orders</p></div>
       <div className="pg-body">
         <DateFilter />
-        <div className="g2 mb14">
-          <div className="search-wrap"><span className="s-ico">🔍</span><input className="inp" placeholder="Filter by rider..." value={riderFilter} onChange={e => setRiderFilter(e.target.value)} /></div>
-          <div />
-        </div>
+        <RiderFilter riders={riders} value={riderFilter} onChange={setRiderFilter} />
 
         <div className="card card-amber mb16">
           <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--amber)', marginBottom: 12 }}>⊟ Rider Expenses</p>
