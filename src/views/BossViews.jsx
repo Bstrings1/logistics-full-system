@@ -284,10 +284,23 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
         <DateFilter />
 
         <p className="bv-sec">Remittance Status</p>
-        {cfg.branches.map((b, idx) => {
+        {cfg.branches.map((b) => {
           const c = branchCalc(b, cfg, db, filterP);
+          // All-time outstanding (no date filter) to detect past unpaid balances
+          const allPays = Object.values(db.payments).filter(p => p.branch === b);
+          const allCash = allPays.reduce((s, p) => s + (p.cash || 0), 0);
+          const allExp = db.expenses.filter(e => e.branch === b).reduce((s, e) => s + e.amount, 0);
+          const allSent = db.remittances.filter(r => r.branch === b).reduce((s, r) => s + r.amount, 0);
+          const allOutstanding = Math.max(0, allCash - allExp - allSent);
+          const hasPastDebt = allOutstanding > 0 && c.stillToSend < allOutstanding;
           return (
-            <div key={b} className="bv-rowcard" style={{ padding: '14px 18px' }}>
+            <div key={b} className="bv-rowcard" style={{ padding: '14px 18px', borderColor: hasPastDebt ? '#fecaca' : undefined }}>
+              {hasPastDebt && (
+                <div style={{ background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 8, padding: '7px 12px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 15 }}>⚠️</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#e0425a' }}>Accumulated balance from past days: {fmtC(allOutstanding)} still outstanding</span>
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div className={`bv-b-av ${branchColor(cfg.branches, b)}`}>{b[0]}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>

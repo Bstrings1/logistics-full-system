@@ -267,15 +267,15 @@ function MgrSend({ filterP, fmtC, branch }) {
         <DateFilter />
         <div className="navy-hero mb20">
           <div className="mini-grid">
+            <div className="mini-card"><p className="mini-l">Still to Send</p><p className="mini-v" style={{ color: rem > 0 ? '#fca5a5' : '#6ee7b7' }}>{rem === 0 && sent > 0 ? '₦0 ✓' : fmtC(rem)}</p></div>
             <div className="mini-card"><p className="mini-l">Cash from Riders</p><p className="mini-v" style={{ color: '#93c5fd' }}>{fmtC(cash)}</p></div>
             <div className="mini-card"><p className="mini-l">Branch Expenses</p><p className="mini-v" style={{ color: '#fca5a5' }}>−{fmtC(exp)}</p></div>
             <div className="mini-card"><p className="mini-l">POS (direct to boss)</p><p className="mini-v" style={{ color: '#6ee7b7' }}>{fmtC(pos)}</p></div>
-            <div className="mini-card"><p className="mini-l">Already Sent</p><p className="mini-v" style={{ color: '#c4b5fd' }}>{fmtC(sent)}</p></div>
           </div>
           <div className="bottom-strip">
             <div className="bs-cell"><p className="bs-l">Net to Send</p><p className="bs-v">{fmtC(netToSend)}</p></div>
-            <div className="bs-cell"><p className="bs-l">Amount Sent</p><p className="bs-v" style={{ color: '#6ee7b7' }}>{fmtC(sent)}</p></div>
-            <div className="bs-cell"><p className="bs-l">Still to Send</p><p className="bs-v" style={{ color: rem > 0 ? '#fca5a5' : '#6ee7b7' }}>{rem === 0 && sent > 0 ? '₦0 ✓' : fmtC(rem)}</p></div>
+            <div className="bs-cell"><p className="bs-l">Already Sent</p><p className="bs-v" style={{ color: '#c4b5fd' }}>{fmtC(sent)}</p></div>
+            <div className="bs-cell"><p className="bs-l">Balance</p><p className="bs-v" style={{ color: rem > 0 ? '#fca5a5' : '#6ee7b7' }}>{rem === 0 && sent > 0 ? '₦0 ✓' : fmtC(rem)}</p></div>
           </div>
         </div>
         <div className="card">
