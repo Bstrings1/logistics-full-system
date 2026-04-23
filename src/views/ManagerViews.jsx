@@ -28,11 +28,11 @@ export default function ManagerViews({ tabId }) {
 }
 
 function MgrRemittance({ filterP, fmtC, branch }) {
-  const { db, setDb } = useApp();
+  const { db, setDb, period } = useApp();
   const b = branch;
   const fo = filterP(db.orders.filter(o => o.branch === b && REVENUE_STATUSES.includes(o.status)));
   const pairs = [...new Set(fo.map(o => `${o.rider}||${o.date}`))].map(k => { const [r, d] = k.split('||'); return { rider: r, date: d }; });
-  const pays = Object.values(db.payments).filter(p => p.branch === b);
+  const pays = filterP(Object.values(db.payments).filter(p => p.branch === b));
   const totalCash = pays.reduce((s, p) => s + (p.cash || 0), 0);
   const totalPOS = pays.reduce((s, p) => s + (p.pos || 0), 0);
   const allRiderExps = (db.riderExpenses || []).filter(e => e.branch === b);
@@ -80,10 +80,10 @@ function MgrRemittance({ filterP, fmtC, branch }) {
       <div className="pg-hd"><p className="pg-title">Rider Remittance</p><p className="pg-sub">Cash + (POS − Gift) = Net Expected</p></div>
       <div className="pg-body">
         <DateFilter />
-        <div className="g2 mb20">
+        {period !== 'today' && <div className="g2 mb20">
           <div className="stat"><p className="stat-l">Total Cash In</p><p className="stat-v" style={{ color: 'var(--blue)' }}>{fmtC(totalCash)}</p></div>
           <div className="stat"><p className="stat-l">Total POS (direct to boss)</p><p className="stat-v" style={{ color: 'var(--green)' }}>{fmtC(totalPOS)}</p></div>
-        </div>
+        </div>}
         <div className="col">
           {pairs.length ? pairs.map(({ rider, date }) => {
             const rOrders = fo.filter(o => o.rider === rider && o.date === date);
