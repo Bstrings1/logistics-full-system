@@ -153,7 +153,7 @@ export function statusBadgeType(s) {
 
 export function branchCalc(b, cfg, db, filterP) {
   const fo = filterP(db.orders.filter(o => o.branch === b && REVENUE_STATUSES.includes(o.status)));
-  const pays = Object.values(db.payments).filter(p => p.branch === b);
+  const pays = filterP(Object.values(db.payments).filter(p => p.branch === b));
   const cash = pays.reduce((s, p) => s + (p.cash || 0), 0);
   const pos = pays.reduce((s, p) => s + (p.pos || 0), 0);
   const exp = filterP(db.expenses.filter(e => e.branch === b)).reduce((s, e) => s + e.amount, 0);
