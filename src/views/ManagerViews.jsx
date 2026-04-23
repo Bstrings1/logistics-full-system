@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabase';
 import { fmt, filterPeriod, ot, calcBonus, getBonusCycleOrders, REVENUE_STATUSES, TODAY } from '../utils/helpers';
 import { Av, Badge, SBadge } from '../components/ui';
 import DateFilter from '../components/DateFilter';
@@ -183,6 +184,24 @@ function RemittanceCard({ rider, date, orders, riderExps, ordersTotal, expTotal,
   );
 }
 
+async function compressImage(file) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const maxW = 1200;
+      const scale = Math.min(1, maxW / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(resolve, 'image/jpeg', 0.78);
+    };
+    img.src = url;
+  });
+}
+
 function MgrSend({ filterP, fmtC, branch }) {
   const { db, setDb, period, rangeFrom } = useApp();
   const b = branch;
@@ -195,16 +214,48 @@ function MgrSend({ filterP, fmtC, branch }) {
   const pos = pays.reduce((s, p) => s + (p.pos || 0), 0);
   const txDate = period === 'range' && rangeFrom ? rangeFrom : TODAY;
   const [fields, setFields] = useState({ amount: '', bank: '', account: '', txID: '' });
+  const [receipt, setReceipt] = useState(null);
+  const [receiptPreview, setReceiptPreview] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const fileRef = useRef();
 
-  function submit() {
+  function pickReceipt(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setReceipt(file);
+    setReceiptPreview(URL.createObjectURL(file));
+  }
+
+  function clearReceipt() {
+    setReceipt(null);
+    setReceiptPreview(null);
+    if (fileRef.current) fileRef.current.value = '';
+  }
+
+  async function submit() {
     const amount = Number(fields.amount);
     if (!amount) { alert('Enter an amount'); return; }
     if (!fields.txID) return;
+    setSubmitting(true);
+    let receiptUrl = null;
+    if (receipt) {
+      try {
+        const compressed = await compressImage(receipt);
+        const path = `${b}/${Date.now()}.jpg`;
+        const { error } = await supabase.storage.from('receipts').upload(path, compressed, { contentType: 'image/jpeg' });
+        if (!error) {
+          const { data } = supabase.storage.from('receipts').getPublicUrl(path);
+          receiptUrl = data.publicUrl;
+        }
+      } catch {}
+    }
     setDb(prev => ({
       ...prev,
-      remittances: [...prev.remittances, { id: Date.now(), branch: b, amount, txID: fields.txID, date: txDate, bank: fields.bank, account: fields.account }],
+      remittances: [...prev.remittances, { id: Date.now(), branch: b, amount, txID: fields.txID, date: txDate, bank: fields.bank, account: fields.account, verified: false, receiptUrl }],
     }));
     setFields({ amount: '', bank: '', account: '', txID: '' });
+    clearReceipt();
+    setSubmitting(false);
   }
 
   const prevRems = filterP(db.remittances.filter(r => r.branch === b));
@@ -235,21 +286,41 @@ function MgrSend({ filterP, fmtC, branch }) {
             <div><label className="lbl">Account Number</label><input className="inp" value={fields.account} onChange={e => setFields(f => ({ ...f, account: e.target.value }))} placeholder="0123456789" style={{ fontFamily: 'monospace' }} /></div>
             <div className="span2"><label className="lbl">Transaction ID <span style={{ color: 'var(--red)' }}>*</span></label><input className="inp" value={fields.txID} onChange={e => setFields(f => ({ ...f, txID: e.target.value }))} placeholder="TRF..." style={{ fontFamily: 'monospace', borderColor: fields.txID ? undefined : 'var(--amber-bd)' }} /></div>
           </div>
-          <button className="btn btn-primary" onClick={submit} disabled={!fields.txID} style={{ opacity: fields.txID ? 1 : 0.45 }}>Submit to Boss →</button>
+
+          {/* Receipt upload */}
+          <div className="mb12">
+            <label className="lbl">Receipt / Screenshot</label>
+            {receiptPreview ? (
+              <div style={{ position: 'relative', display: 'inline-block', marginTop: 6 }}>
+                <img src={receiptPreview} alt="receipt" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 10, border: '1.5px solid var(--border)', display: 'block' }} />
+                <button onClick={clearReceipt} style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,.55)', color: '#fff', border: 'none', borderRadius: '50%', width: 26, height: 26, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+              </div>
+            ) : (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, padding: '10px 14px', border: '1.5px dashed var(--border)', borderRadius: 10, cursor: 'pointer', color: 'var(--t3)', fontSize: 13 }}>
+                <span style={{ fontSize: 20 }}>📎</span>
+                <span>Tap to attach receipt image</span>
+                <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={pickReceipt} />
+              </label>
+            )}
+          </div>
+
+          <button className="btn btn-primary" onClick={submit} disabled={!fields.txID || submitting} style={{ opacity: fields.txID && !submitting ? 1 : 0.45 }}>
+            {submitting ? 'Uploading...' : 'Submit to Boss →'}
+          </button>
         </div>
         {prevRems.length > 0 && (
           <div className="card mt12">
             <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Previous transfers</p>
             <table className="tbl">
-              <thead><tr><th>Amount</th><th>Bank</th><th>Account</th><th>TXN</th><th>Date</th><th>Boss</th></tr></thead>
+              <thead><tr><th>Amount</th><th>Bank</th><th>TXN</th><th>Date</th><th>Receipt</th><th>Boss</th></tr></thead>
               <tbody>
                 {prevRems.map((r, i) => (
                   <tr key={i}>
                     <td style={{ color: 'var(--green)', fontWeight: 700 }}>{fmtC(r.amount)}</td>
                     <td>{r.bank || '—'}</td>
-                    <td><code style={{ fontSize: 11 }}>{r.account || '—'}</code></td>
                     <td><code style={{ fontSize: 11 }}>{r.txID || '—'}</code></td>
                     <td style={{ fontSize: 11, color: 'var(--t4)' }}>{r.date}</td>
+                    <td>{r.receiptUrl ? <a href={r.receiptUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--blue)' }}>View</a> : <span style={{ fontSize: 11, color: 'var(--t4)' }}>—</span>}</td>
                     <td>{r.verified ? <Badge text="✓ Verified" type="green" /> : <Badge text="Pending" type="amber" />}</td>
                   </tr>
                 ))}

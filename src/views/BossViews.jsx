@@ -297,7 +297,7 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
             <p className="bv-sec" style={{ color: '#d97706' }}>⏳ Pending Verification</p>
             <div className="bv-tw">
               <table>
-                <thead><tr><th>Branch</th><th>Amount</th><th>Bank</th><th>TXN ID</th><th>Date</th><th></th></tr></thead>
+                <thead><tr><th>Branch</th><th>Amount</th><th>Bank</th><th>TXN ID</th><th>Date</th><th>Receipt</th><th></th></tr></thead>
                 <tbody>
                   {unverifiedRems.map((r, i) => (
                     <tr key={i}>
@@ -306,6 +306,13 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
                       <td>{r.bank || '—'}</td>
                       <td className="bv-mono">{r.txID || '—'}</td>
                       <td className="bv-mono">{r.date}</td>
+                      <td>
+                        {r.receiptUrl
+                          ? <a href={r.receiptUrl} target="_blank" rel="noreferrer">
+                              <img src={r.receiptUrl} alt="receipt" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, border: '1.5px solid #d9ddea', cursor: 'pointer' }} />
+                            </a>
+                          : <span style={{ fontSize: 11, color: '#858cab' }}>—</span>}
+                      </td>
                       <td><button className="bv-btn amber" style={{ height: 30, fontSize: 12 }} onClick={() => verify(r.id)}>Verify →</button></td>
                     </tr>
                   ))}
@@ -394,15 +401,21 @@ function BossBranches({ filterP, fmtC, cfg, db }) {
               )}
               <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none', borderTop: '1px solid #eef0f7' }}>
                 <table>
-                  <thead><tr><th>Amount</th><th>Bank</th><th>Account</th><th>TXN ID</th><th>Date</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Amount</th><th>Bank</th><th>TXN ID</th><th>Date</th><th>Receipt</th><th>Status</th></tr></thead>
                   <tbody>
                     {rems.length ? rems.map((r, i) => (
                       <tr key={i}>
                         <td><Money tone="ok">{fmtC(r.amount)}</Money></td>
                         <td>{r.bank || '—'}</td>
-                        <td className="bv-mono">{r.account || '—'}</td>
                         <td className="bv-mono">{r.txID || '—'}</td>
                         <td className="bv-mono">{r.date}</td>
+                        <td>
+                          {r.receiptUrl
+                            ? <a href={r.receiptUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
+                                <img src={r.receiptUrl} alt="receipt" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, border: '1.5px solid #d9ddea', cursor: 'pointer' }} />
+                              </a>
+                            : <span style={{ fontSize: 11, color: '#858cab' }}>—</span>}
+                        </td>
                         <td>{r.verified ? <Blip type="ok">Verified</Blip> : <button className="bv-btn amber" style={{ height: 30, fontSize: 12 }} onClick={() => verify(r.id)}>Verify →</button>}</td>
                       </tr>
                     )) : <tr><td colSpan={6}><div className="bv-empty">No remittance logged</div></td></tr>}

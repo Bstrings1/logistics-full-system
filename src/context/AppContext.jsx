@@ -159,7 +159,7 @@ function rowsToDb({ orders = [], riders = [], payments = [], expenses = [],
     payments: paymentsObj,
     expenses: expenses.map(e => ({ id: e.id, branch: e.branch, desc: e.description, cat: e.cat, amount: e.amount, date: e.date })),
     riderExpenses: riderExpenses.map(e => ({ id: e.id, branch: e.branch, rider: e.rider, amount: e.amount, desc: e.description, date: e.date })),
-    remittances: remittances.map(r => ({ id: r.id, branch: r.branch, amount: r.amount, txID: r.tx_id, date: r.date, bank: r.bank, account: r.account, verified: r.verified || false })),
+    remittances: remittances.map(r => ({ id: r.id, branch: r.branch, amount: r.amount, txID: r.tx_id, date: r.date, bank: r.bank, account: r.account, verified: r.verified || false, receiptUrl: r.receipt_url || null })),
     deliveryFees: deliveryFeesObj,
     loans: loans.map(l => ({ id: l.id, staff: l.staff, amount: l.amount, salary: l.salary, date: l.date, repayments: l.repayments || [] })),
     inventory: inventoryObj,
@@ -233,7 +233,7 @@ async function syncChanges(prev, next) {
     if (toUpsert.length) {
       ops.push(supabase.from('remittances').upsert(toUpsert.map(r => ({
         id: r.id, branch: r.branch, amount: r.amount, tx_id: r.txID, date: r.date,
-        bank: r.bank, account: r.account, verified: r.verified || false,
+        bank: r.bank, account: r.account, verified: r.verified || false, receipt_url: r.receiptUrl || null,
       }))));
     }
     if (toDelete.length) {
