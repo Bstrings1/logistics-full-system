@@ -185,10 +185,6 @@ function VendorInvoice({ vn, filterP }) {
     db.orders.filter(o => gp(o).some(p => p.vendor === vn) && REVENUE_STATUSES.includes(o.status))
   ).sort((a, b) => (b.date||'').localeCompare(a.date||''));
 
-  // All orders in period (including failed) for failed count
-  const allPeriodOrders = filterP(db.orders.filter(o => gp(o).some(p => p.vendor === vn)));
-  const failedOrders = allPeriodOrders.filter(o => ['Failed','Cancelled'].includes(o.status));
-
   const grossTotal = orders.reduce((s, o) => s + vt(o), 0);
   const fees = orders.reduce((s, o) => s + (db.deliveryFees[o.id] || 0), 0);
   const netPayable = Math.max(0, grossTotal - fees);
@@ -232,22 +228,6 @@ function VendorInvoice({ vn, filterP }) {
     const dateLabel = new Date().toLocaleDateString('en-NG', { day:'numeric', month:'long', year:'numeric' });
     const outColor = remaining <= 0 && totalPaid > 0 ? '#166534' : totalPaid > 0 ? '#92400e' : '#991b1b';
     const outBg    = remaining <= 0 && totalPaid > 0 ? '#dcfce7' : totalPaid > 0 ? '#fef3c7' : '#fee2e2';
-
-    const orderRows = orders.map(o => {
-      const prods = gp(o).filter(p => p.vendor === vn);
-      const val = vt(o);
-      const fee = db.deliveryFees[o.id] || 0;
-      const net = Math.max(0, val - fee);
-      const prodStr = prods.map(p => `${p.name}${(Number(p.qty)||1)>1?` ×${p.qty}`:''}`).join(', ');
-      return `<tr>
-        <td style="padding:12px 16px;border-bottom:1px solid #f8f8f8;font-size:13px;color:#6b7280;white-space:nowrap">${o.date}</td>
-        <td style="padding:12px 16px;border-bottom:1px solid #f8f8f8;font-size:13px;font-weight:600;color:#374151">${o.rider || '—'}</td>
-        <td style="padding:12px 16px;border-bottom:1px solid #f8f8f8;font-size:13px;color:#374151">${prodStr}</td>
-        <td style="padding:12px 16px;border-bottom:1px solid #f8f8f8;font-size:13px;font-weight:700;font-family:monospace;text-align:right;color:#0b1230">${fmt(val, currency)}</td>
-        <td style="padding:12px 16px;border-bottom:1px solid #f8f8f8;font-size:13px;font-family:monospace;text-align:right;color:${fee>0?'#e0425a':'#9ca3af'}">${fee>0?'−'+fmt(fee,currency):'—'}</td>
-        <td style="padding:12px 16px;border-bottom:1px solid #f8f8f8;font-size:13px;font-weight:800;font-family:monospace;text-align:right;color:#1a56db">${fmt(net, currency)}</td>
-      </tr>`;
-    }).join('');
 
     const prodTableRows = productRows.map(([name, v]) => `<tr>
       <td style="padding:11px 16px;border-bottom:1px solid #f8f8f8;font-size:13px;font-weight:600;color:#0b1230">${name}</td>
@@ -293,40 +273,6 @@ function VendorInvoice({ vn, filterP }) {
           <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9ca3af;margin-bottom:6px">Invoice For</div>
           <div style="font-size:24px;font-weight:800;color:#0b1230;letter-spacing:-.5px;margin-bottom:4px">${vn}</div>
           <div style="font-size:12px;color:#6b7280">Period: ${periodLabel} &nbsp;·&nbsp; Generated: ${today}</div>
-        </div>
-
-        <!-- Delivered orders -->
-        <div style="padding:16px 32px 0">
-          <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9ca3af;margin-bottom:6px">Delivered Orders</div>
-        </div>
-        <table style="width:100%;border-collapse:collapse">
-          <thead>
-            <tr style="background:#fafafa">
-              <th style="${thStyle}">Date</th>
-              <th style="${thStyle}">Rider</th>
-              <th style="${thStyle}">Products</th>
-              <th style="${thR}">Value</th>
-              <th style="${thR}">Fee</th>
-              <th style="${thR}">Net</th>
-            </tr>
-          </thead>
-          <tbody>${orderRows || `<tr><td colspan="6" style="padding:20px;text-align:center;color:#9ca3af;font-size:13px">No delivered orders in this period</td></tr>`}</tbody>
-        </table>
-
-        <!-- Summary -->
-        <div style="background:#f9fafb;border-top:1px solid #f0f0f0;padding:16px 32px">
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
-            <span style="font-size:13px;color:#374151">Total Delivered Value</span>
-            <span style="font-size:13px;font-weight:700;font-family:monospace;color:#0b1230">${fmt(grossTotal, currency)}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
-            <span style="font-size:13px;color:#e0425a;font-weight:600">Delivery Fees Deducted</span>
-            <span style="font-size:13px;font-weight:700;font-family:monospace;color:#e0425a">−${fmt(fees, currency)}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
-            <span style="font-size:13px;color:#374151">Failed orders (charged)</span>
-            <span style="font-size:13px;font-weight:600;color:#374151">${failedOrders.length} order${failedOrders.length !== 1 ? 's' : ''}</span>
-          </div>
         </div>
 
         <!-- Net payable -->
@@ -446,64 +392,6 @@ function VendorInvoice({ vn, filterP }) {
           <div className="inv-for-label">Invoice For</div>
           <div className="inv-for-name">{vn}</div>
           <div className="inv-for-meta">Period: {periodLabel} &nbsp;·&nbsp; Generated: {today}</div>
-        </div>
-
-        {/* Delivered orders table */}
-        <div className="inv-orders-label">Delivered Orders</div>
-        <div style={{ overflowX:'auto' }}>
-          <table className="inv-tbl">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Rider</th>
-                <th>Products</th>
-                <th className="r">Value</th>
-                <th className="r">Fee</th>
-                <th className="r">Net</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.length === 0
-                ? <tr><td colSpan={6} style={{ textAlign:'center', padding:'20px', color:'var(--t3)' }}>No delivered orders in this period</td></tr>
-                : orders.map(o => {
-                  const prods = gp(o).filter(p => p.vendor === vn);
-                  const val = vt(o);
-                  const fee = db.deliveryFees[o.id] || 0;
-                  const net = Math.max(0, val - fee);
-                  return (
-                    <tr key={o.id}>
-                      <td style={{ whiteSpace:'nowrap', color:'#6b7280' }}>{o.date}</td>
-                      <td style={{ fontWeight:600 }}>{o.rider || '—'}</td>
-                      <td>
-                        {prods.map((p, i) => (
-                          <span key={i}>{p.name}{(Number(p.qty)||1)>1?` ×${p.qty}`:''}{i<prods.length-1?', ':''}</span>
-                        ))}
-                      </td>
-                      <td className="r" style={{ fontWeight:700, fontFamily:"'JetBrains Mono',monospace" }}>{fmt(val, currency)}</td>
-                      <td className="r" style={{ fontFamily:"'JetBrains Mono',monospace", color:fee>0?'#e0425a':'#9ca3af' }}>{fee>0?'−'+fmt(fee,currency):'—'}</td>
-                      <td className="r" style={{ fontWeight:800, fontFamily:"'JetBrains Mono',monospace", color:'#1a3a8f' }}>{fmt(net, currency)}</td>
-                    </tr>
-                  );
-                })
-              }
-            </tbody>
-          </table>
-        </div>
-
-        {/* Summary */}
-        <div className="inv-summary">
-          <div className="inv-summary-row">
-            <span className="inv-summary-label">Total Delivered Value</span>
-            <span className="inv-summary-val">{fmt(grossTotal, currency)}</span>
-          </div>
-          <div className="inv-summary-row">
-            <span className="inv-summary-label red">Delivery Fees Deducted</span>
-            <span className="inv-summary-val red">−{fmt(fees, currency)}</span>
-          </div>
-          <div className="inv-summary-row">
-            <span className="inv-summary-label">Failed orders (charged)</span>
-            <span className="inv-summary-val" style={{ fontFamily:'inherit', fontWeight:600 }}>{failedOrders.length} order{failedOrders.length!==1?'s':''}</span>
-          </div>
         </div>
 
         {/* Net payable */}
