@@ -158,9 +158,14 @@ function VendorInvoice({ vn, filterP }) {
   const grossTotal = orders.reduce((s, o) => s + vt(o), 0);
   const fees = orders.reduce((s, o) => s + (db.deliveryFees[o.id] || 0), 0);
   const netPayable = Math.max(0, grossTotal - fees);
-  const payments = filterP(db.vendorPayments[vn] || []);
+  // All-time payments — vendor payment tracking is cumulative, not period-filtered
+  const allOrders = db.orders.filter(o => gp(o).some(p => p.vendor === vn) && REVENUE_STATUSES.includes(o.status));
+  const allGross = allOrders.reduce((s, o) => s + vt(o), 0);
+  const allFees = allOrders.reduce((s, o) => s + (db.deliveryFees[o.id] || 0), 0);
+  const allNetPayable = Math.max(0, allGross - allFees);
+  const payments = [...(db.vendorPayments[vn] || [])].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const totalPaid = payments.reduce((s, p) => s + (p.amount || 0), 0);
-  const outstanding = Math.max(0, netPayable - totalPaid);
+  const outstanding = Math.max(0, allNetPayable - totalPaid);
   const currency = cfg.currency;
 
   // Product breakdown: qty sold & warehouse remaining
@@ -325,11 +330,11 @@ function VendorInvoice({ vn, filterP }) {
             <p className="vv-hero-v">{fmt(netPayable, currency)}</p>
           </div>
           <div className="vv-hero-card">
-            <p className="vv-hero-l">Paid</p>
+            <p className="vv-hero-l">Total Paid (All Time)</p>
             <p className="vv-hero-v green">{fmt(totalPaid, currency)}</p>
           </div>
           <div className="vv-hero-card">
-            <p className="vv-hero-l">Outstanding</p>
+            <p className="vv-hero-l">Outstanding (All Time)</p>
             <p className={`vv-hero-v ${outstanding > 0 ? 'red' : 'green'}`}>
               {outstanding <= 0 ? '₦0 ✓' : fmt(outstanding, currency)}
             </p>

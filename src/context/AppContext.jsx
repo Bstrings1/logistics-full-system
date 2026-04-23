@@ -378,7 +378,10 @@ export function AppProvider({ children }) {
       .on('postgres_changes', { event: '*', schema: 'public' }, () => { loadAll(); })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Polling fallback: refresh every 30s in case realtime misses vendor_payments changes
+    const poll = setInterval(loadAll, 30000);
+
+    return () => { supabase.removeChannel(channel); clearInterval(poll); };
   }, []);
 
   useEffect(() => {
