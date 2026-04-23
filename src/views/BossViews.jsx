@@ -660,11 +660,13 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
       <div className="pg-hd"><p className="pg-title">Vendor Payments</p><p className="pg-sub">Select a vendor to see breakdown & log a payment</p></div>
       <div className="pg-body">
         <DateFilter />
-        <div className="bv-kpis c3" style={{ marginBottom: 16 }}>
-          <div className="bv-kpi"><div className="bv-kpi-l">Total Payable</div><div className="bv-kpi-v">{fmtC(totalPayable)}</div></div>
-          <div className="bv-kpi ok"><div className="bv-kpi-l">Paid</div><div className="bv-kpi-v">{fmtC(totalPaid)}</div></div>
-          <div className={`bv-kpi ${totalRem > 0 ? 'warn' : 'ok'}`}><div className="bv-kpi-l">Remaining</div><div className="bv-kpi-v">{fmtC(totalRem)}</div></div>
-        </div>
+        {!vpSelected && (
+          <div className="bv-kpis c3" style={{ marginBottom: 16 }}>
+            <div className="bv-kpi"><div className="bv-kpi-l">Total Payable</div><div className="bv-kpi-v">{fmtC(totalPayable)}</div></div>
+            <div className="bv-kpi ok"><div className="bv-kpi-l">Paid</div><div className="bv-kpi-v">{fmtC(totalPaid)}</div></div>
+            <div className={`bv-kpi ${totalRem > 0 ? 'warn' : 'ok'}`}><div className="bv-kpi-l">Remaining</div><div className="bv-kpi-v">{fmtC(totalRem)}</div></div>
+          </div>
+        )}
 
         <div style={{ marginBottom: 14 }}>
           <label className="bv-lbl">Select Vendor</label>
@@ -697,8 +699,8 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
           <>
             <div className="bv-kpis c4" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 16 }}>
               <div className="bv-kpi blue"><div className="bv-kpi-l">Delivered Value</div><div className="bv-kpi-v">{fmtC(c.totalVal)}</div></div>
-              <div className="bv-kpi bad"><div className="bv-kpi-l">Fees Deducted</div><div className="bv-kpi-v">−{fmtC(c.fees)}</div></div>
-              <div className="bv-kpi"><div className="bv-kpi-l">Net Payable</div><div className="bv-kpi-v">{fmtC(c.net)}</div></div>
+              <div className="bv-kpi bad"><div className="bv-kpi-l">Delivery Fees</div><div className="bv-kpi-v">−{fmtC(c.fees)}</div></div>
+              <div className="bv-kpi accent"><div className="bv-kpi-l">Amount to be Paid</div><div className="bv-kpi-v">{fmtC(c.net)}</div></div>
               <div className="bv-kpi ok"><div className="bv-kpi-l">Amount Paid</div><div className="bv-kpi-v">{fmtC(c.paid)}</div></div>
             </div>
 
