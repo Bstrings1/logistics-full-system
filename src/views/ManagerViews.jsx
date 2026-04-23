@@ -25,6 +25,7 @@ export default function ManagerViews({ tabId }) {
   if (tabId === 'send') return <MgrSend filterP={filterP} fmtC={fmtC} branch={b} />;
   if (tabId === 'expenses') return <MgrExpenses filterP={filterP} fmtC={fmtC} branch={b} />;
   if (tabId === 'riders') return <MgrRiders filterP={filterP} fmtC={fmtC} branch={b} />;
+  if (tabId === 'loans') return <MgrLoans fmtC={fmtC} branch={b} />;
   return <MgrRemittance filterP={filterP} fmtC={fmtC} branch={b} />;
 }
 
@@ -484,6 +485,135 @@ function MgrRiders({ filterP, fmtC, branch }) {
             </tbody>
           </table>
         </div>
+      </div>
+    </>
+  );
+}
+
+function MgrLoans({ fmtC, branch }) {
+  const { db, setDb } = useApp();
+  const loans = (db.loans || []).filter(l => l.branch === branch);
+  const active = loans.filter(l => {
+    const paid = (l.repayments || []).reduce((s, r) => s + r.amount, 0);
+    return paid < l.amount;
+  });
+  const cleared = loans.filter(l => {
+    const paid = (l.repayments || []).reduce((s, r) => s + r.amount, 0);
+    return paid >= l.amount;
+  });
+  const totalOutstanding = active.reduce((s, l) => {
+    const paid = (l.repayments || []).reduce((r, x) => r + x.amount, 0);
+    return s + Math.max(0, l.amount - paid);
+  }, 0);
+
+  const [form, setForm] = useState({ staff: '', amount: '', salary: '', date: TODAY, note: '' });
+  const [showForm, setShowForm] = useState(false);
+  const [repForm, setRepForm] = useState({});
+  const [openLoan, setOpenLoan] = useState(null);
+
+  function addLoan() {
+    if (!form.staff || !form.amount) return alert('Staff name and amount required');
+    const loan = { id: Date.now(), branch, staff: form.staff, amount: Number(form.amount), salary: Number(form.salary) || 0, date: form.date, note: form.note, repayments: [] };
+    setDb(d => ({ ...d, loans: [...(d.loans || []), loan] }));
+    setForm({ staff: '', amount: '', salary: '', date: TODAY, note: '' });
+    setShowForm(false);
+  }
+
+  function logRepayment(loanId) {
+    const rf = repForm[loanId] || {};
+    const amount = Number(rf.amount);
+    if (!amount) return alert('Enter repayment amount');
+    const rep = { id: Date.now(), amount, date: rf.date || TODAY };
+    setDb(d => ({ ...d, loans: (d.loans || []).map(l => l.id === loanId ? { ...l, repayments: [...(l.repayments || []), rep] } : l) }));
+    setRepForm(f => ({ ...f, [loanId]: { amount: '', date: TODAY } }));
+  }
+
+  return (
+    <>
+      <div className="pg-hd"><p className="pg-title">Staff Loans — {branch}</p></div>
+      <div className="pg-body">
+        {totalOutstanding > 0 && (
+          <div className="card" style={{ background: '#fff7ed', border: '1px solid #fed7aa', marginBottom: 16 }}>
+            <p style={{ color: '#c2410c', fontWeight: 700 }}>Total Outstanding: {fmtC(totalOutstanding)}</p>
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <button className="btn-primary" onClick={() => setShowForm(v => !v)}>{showForm ? 'Cancel' : '+ Add New Loan'}</button>
+        </div>
+        {showForm && (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <p style={{ fontWeight: 600, marginBottom: 10 }}>New Loan</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div><label className="lbl">Staff Name</label><input className="inp" value={form.staff} onChange={e => setForm(f => ({ ...f, staff: e.target.value }))} /></div>
+              <div><label className="lbl">Loan Amount</label><PriceInput value={form.amount} onChange={v => setForm(f => ({ ...f, amount: v }))} /></div>
+              <div><label className="lbl">Monthly Salary</label><PriceInput value={form.salary} onChange={v => setForm(f => ({ ...f, salary: v }))} /></div>
+              <div><label className="lbl">Date</label><input className="inp" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
+              <div style={{ gridColumn: '1/-1' }}><label className="lbl">Note</label><input className="inp" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} /></div>
+            </div>
+            <button className="btn-primary" style={{ marginTop: 12 }} onClick={addLoan}>Save Loan</button>
+          </div>
+        )}
+        <p style={{ fontWeight: 600, marginBottom: 8 }}>Active Loans ({active.length})</p>
+        {active.length === 0 && <div className="card"><p style={{ color: '#888' }}>No active loans.</p></div>}
+        {active.map(l => {
+          const paid = (l.repayments || []).reduce((s, r) => s + r.amount, 0);
+          const remaining = Math.max(0, l.amount - paid);
+          const pct = Math.min(100, Math.round((paid / l.amount) * 100));
+          const rf = repForm[l.id] || { amount: '', date: TODAY };
+          const open = openLoan === l.id;
+          return (
+            <div key={l.id} className="card" style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ fontWeight: 700 }}>{l.staff}</p>
+                  <p style={{ fontSize: 12, color: '#888' }}>{l.date}{l.note ? ` • ${l.note}` : ''}</p>
+                </div>
+                <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setOpenLoan(open ? null : l.id)}>{open ? 'Close' : 'Details'}</button>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                  <span>Loan: {fmtC(l.amount)}</span><span>Remaining: <b style={{ color: '#dc2626' }}>{fmtC(remaining)}</b></span>
+                </div>
+                <div style={{ background: '#e5e7eb', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, background: 'var(--primary)', height: '100%', transition: 'width .3s' }} />
+                </div>
+                <p style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{pct}% repaid</p>
+              </div>
+              {open && (
+                <div style={{ marginTop: 10, borderTop: '1px solid #e5e7eb', paddingTop: 10 }}>
+                  <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Repayment History</p>
+                  {(l.repayments || []).length === 0 && <p style={{ color: '#aaa', fontSize: 13 }}>No repayments yet.</p>}
+                  {(l.repayments || []).map(r => (
+                    <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0', borderBottom: '1px solid #f3f4f6' }}>
+                      <span>{r.date}</span><span style={{ fontWeight: 600 }}>{fmtC(r.amount)}</span>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <PriceInput value={rf.amount} onChange={v => setRepForm(f => ({ ...f, [l.id]: { ...rf, amount: v } }))} style={{ flex: 1 }} />
+                    <input className="inp" type="date" value={rf.date} onChange={e => setRepForm(f => ({ ...f, [l.id]: { ...rf, date: e.target.value } }))} style={{ flex: 1 }} />
+                    <button className="btn-primary" style={{ whiteSpace: 'nowrap' }} onClick={() => logRepayment(l.id)}>Log</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {cleared.length > 0 && (
+          <>
+            <p style={{ fontWeight: 600, marginTop: 16, marginBottom: 8, color: '#16a34a' }}>Cleared Loans ({cleared.length})</p>
+            {cleared.map(l => (
+              <div key={l.id} className="card" style={{ marginBottom: 8, opacity: 0.7 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div>
+                    <p style={{ fontWeight: 700 }}>{l.staff}</p>
+                    <p style={{ fontSize: 12, color: '#888' }}>{l.date}{l.note ? ` • ${l.note}` : ''}</p>
+                  </div>
+                  <span style={{ color: '#16a34a', fontWeight: 700, fontSize: 13 }}>CLEARED — {fmtC(l.amount)}</span>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </>
   );
