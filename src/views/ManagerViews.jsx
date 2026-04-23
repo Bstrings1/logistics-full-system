@@ -28,7 +28,7 @@ export default function ManagerViews({ tabId }) {
 }
 
 function MgrRemittance({ filterP, fmtC, branch }) {
-  const { db, setDb, period } = useApp();
+  const { db, setDb } = useApp();
   const b = branch;
   const fo = filterP(db.orders.filter(o => o.branch === b && REVENUE_STATUSES.includes(o.status)));
   const pairs = [...new Set(fo.map(o => `${o.rider}||${o.date}`))].map(k => { const [r, d] = k.split('||'); return { rider: r, date: d }; });
@@ -80,10 +80,10 @@ function MgrRemittance({ filterP, fmtC, branch }) {
       <div className="pg-hd"><p className="pg-title">Rider Remittance</p><p className="pg-sub">Cash + (POS − Gift) = Net Expected</p></div>
       <div className="pg-body">
         <DateFilter />
-        {period !== 'today' && <div className="g2 mb20">
+        <div className="g2 mb20">
           <div className="stat"><p className="stat-l">Total Cash In</p><p className="stat-v" style={{ color: 'var(--blue)' }}>{fmtC(totalCash)}</p></div>
           <div className="stat"><p className="stat-l">Total POS (direct to boss)</p><p className="stat-v" style={{ color: 'var(--green)' }}>{fmtC(totalPOS)}</p></div>
-        </div>}
+        </div>
         <div className="col">
           {pairs.length ? pairs.map(({ rider, date }) => {
             const rOrders = fo.filter(o => o.rider === rider && o.date === date);
@@ -186,7 +186,7 @@ function RemittanceCard({ rider, date, orders, riderExps, ordersTotal, expTotal,
 function MgrSend({ filterP, fmtC, branch }) {
   const { db, setDb, period, rangeFrom } = useApp();
   const b = branch;
-  const pays = Object.values(db.payments).filter(p => p.branch === b);
+  const pays = filterP(Object.values(db.payments).filter(p => p.branch === b));
   const cash = pays.reduce((s, p) => s + (p.cash || 0), 0);
   const exp = filterP(db.expenses.filter(e => e.branch === b)).reduce((s, e) => s + e.amount, 0);
   const netToSend = Math.max(0, cash - exp);
