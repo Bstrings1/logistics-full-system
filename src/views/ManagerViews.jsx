@@ -203,7 +203,13 @@ async function compressImage(file) {
 }
 
 function MgrSend({ filterP, fmtC, branch }) {
-  const { db, setDb, period, rangeFrom } = useApp();
+  const { db, setDb, period, rangeFrom, setPeriod, setRangeFrom, setRangeTo } = useApp();
+
+  function jumpToDate(date) {
+    setPeriod('range');
+    setRangeFrom(date);
+    setRangeTo(date);
+  }
   const b = branch;
   const pays = filterP(Object.values(db.payments).filter(p => p.branch === b));
   const cash = pays.reduce((s, p) => s + (p.cash || 0), 0);
@@ -307,7 +313,11 @@ function MgrSend({ filterP, fmtC, branch }) {
               <tbody>
                 {dateRows.map(row => (
                   <tr key={row.date} style={{ borderBottom: '1px solid #fee2e2' }}>
-                    <td style={{ padding: '6px 8px', fontWeight: 600, color: '#7f1d1d' }}>{row.date}</td>
+                    <td style={{ padding: '6px 8px' }}>
+                      <button onClick={() => jumpToDate(row.date)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 700, color: '#e0425a', fontSize: 12, textDecoration: 'underline', fontFamily: 'inherit' }}>
+                        {row.date} →
+                      </button>
+                    </td>
                     <td style={{ padding: '6px 8px', textAlign: 'right', color: '#3a4267' }}>{fmtC(row.net)}</td>
                     <td style={{ padding: '6px 8px', textAlign: 'right', color: '#1fa67a', fontWeight: 600 }}>{row.paid > 0 ? fmtC(row.paid) : '—'}</td>
                     <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, color: '#e0425a' }}>{fmtC(row.owe)}</td>
