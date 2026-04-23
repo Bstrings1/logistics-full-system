@@ -144,7 +144,7 @@ function rowsToDb({ orders = [], riders = [], payments = [], expenses = [],
   const vendorPaymentsObj = {};
   vendorPayments.forEach(p => {
     (vendorPaymentsObj[p.vendor] = vendorPaymentsObj[p.vendor] || []).push(
-      { id: p.id, amount: p.amount, bank: p.bank, txID: p.tx_id, date: p.date }
+      { id: p.id, amount: p.amount, bank: p.bank, txID: p.tx_id, date: p.date, account: p.account || null, accountName: p.account_name || null }
     );
   });
 
@@ -278,7 +278,7 @@ async function syncChanges(prev, next) {
     const toInsert = [];
     Object.entries(next.vendorPayments).forEach(([vendor, pmts]) => {
       pmts.forEach(p => {
-        if (!prevIds.has(p.id)) toInsert.push({ id: p.id, vendor, amount: p.amount, bank: p.bank, tx_id: p.txID, date: p.date });
+        if (!prevIds.has(p.id)) toInsert.push({ id: p.id, vendor, amount: p.amount, bank: p.bank, tx_id: p.txID, date: p.date, account: p.account || null, account_name: p.accountName || null });
       });
     });
     if (toInsert.length) ops.push(supabase.from('vendor_payments').insert(toInsert));

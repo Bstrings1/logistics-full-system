@@ -632,6 +632,7 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
       vendorPayments: {
         ...prev.vendorPayments,
         [vpSelected]: [...(prev.vendorPayments[vpSelected] || []), {
+          id: Date.now(),
           amount, txID: payFields.txID, date: payFields.date,
           bank: payFields.bank, account: payFields.account, accountName: payFields.accountName,
         }],
