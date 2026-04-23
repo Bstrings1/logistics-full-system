@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
-import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, calcBonus, bonusRate, ot, gp, REVENUE_STATUSES, TODAY, statusBadgeType } from '../utils/helpers';
-import { Badge } from '../components/ui';
+import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, calcBonus, bonusRate, ot, gp, REVENUE_STATUSES, TODAY } from '../utils/helpers';
+import { SBadge } from '../components/ui';
 import DateFilter from '../components/DateFilter';
 
 const CSS = `
@@ -972,7 +972,7 @@ function BossDeliveryFees({ fmtC, cfg, db, setActiveTab }) {
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                       <span style={{ fontSize: 15, fontWeight: 700 }}>📍 {o.address}</span>
-                      <Badge type={statusBadgeType(o.status)}>{o.status}</Badge>
+                      <SBadge status={o.status} />
                     </div>
                     <div style={{ fontSize: 12, color: '#5b6385' }}>Rider: <strong>{o.rider}</strong> · {o.branch} · {o.date}</div>
                     <div style={{ fontSize: 12, color: '#5b6385', marginTop: 2 }}>{o.customerName} · {o.phone}</div>
@@ -1010,7 +1010,7 @@ function BossDeliveryFees({ fmtC, cfg, db, setActiveTab }) {
                     return (
                       <tr key={o.id}>
                         <td><div style={{ fontWeight: 600 }}>📍 {o.address}</div><div style={{ fontSize: 11, color: '#858cab' }}>{o.customerName}</div></td>
-                        <td><Badge type={statusBadgeType(o.status)}>{o.status}</Badge></td>
+                        <td><SBadge status={o.status} /></td>
                         <td>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                             {gp(o).map((p, i) => (
