@@ -187,6 +187,56 @@ function Money({ children, tone = '', big }) {
   return <span className={`bv-money${tone ? ' ' + tone : ''}${big ? ' bv-money-big' : ''}`}>{children}</span>;
 }
 
+function VerifyModal({ rem, fmtC, onConfirm, onClose }) {
+  if (!rem) return null;
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(11,18,48,.55)', backdropFilter: 'blur(3px)' }} onClick={onClose}>
+      <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', padding: '0 0 32px' }} onClick={e => e.stopPropagation()}>
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: '#d9ddea' }} />
+        </div>
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg,#0d1b3e 0%,#1a3a8f 60%,#1a56db 100%)', padding: '20px 24px 22px', margin: '0 0 0' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 4 }}>Transfer Details</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#fff', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '-.02em' }}>{fmtC(rem.amount)}</div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,.6)', marginTop: 4 }}>{rem.branch} · {rem.date}</div>
+        </div>
+        {/* Details */}
+        <div style={{ padding: '20px 24px 0' }}>
+          {[
+            { l: 'Branch', v: rem.branch },
+            { l: 'Amount', v: fmtC(rem.amount) },
+            { l: 'Bank', v: rem.bank || '—' },
+            { l: 'Account Number', v: rem.account || '—' },
+            { l: 'Transaction ID', v: rem.txID || '—' },
+            { l: 'Date', v: rem.date },
+          ].map(({ l, v }) => (
+            <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: '1px solid #f0f0f5' }}>
+              <span style={{ fontSize: 13, color: '#858cab', fontWeight: 600 }}>{l}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#0b1230', fontFamily: l === 'Transaction ID' || l === 'Account Number' ? 'monospace' : 'inherit' }}>{v}</span>
+            </div>
+          ))}
+        </div>
+        {/* Receipt */}
+        <div style={{ padding: '18px 24px 0' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#858cab', marginBottom: 10 }}>Receipt</div>
+          {rem.receiptUrl
+            ? <a href={rem.receiptUrl} target="_blank" rel="noreferrer">
+                <img src={rem.receiptUrl} alt="receipt" style={{ width: '100%', borderRadius: 12, border: '1.5px solid #eef0f7', display: 'block', objectFit: 'contain', maxHeight: 320 }} />
+              </a>
+            : <div style={{ background: '#f6f7fb', border: '1.5px dashed #d9ddea', borderRadius: 12, padding: '28px 0', textAlign: 'center', color: '#858cab', fontSize: 13 }}>No receipt attached</div>}
+        </div>
+        {/* Actions */}
+        <div style={{ padding: '20px 24px 0', display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '13px 0', borderRadius: 12, border: '1.5px solid #d9ddea', background: '#fff', fontSize: 14, fontWeight: 600, color: '#5b6385', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+          <button onClick={onConfirm} style={{ flex: 2, padding: '13px 0', borderRadius: 12, border: 0, background: 'linear-gradient(180deg,#1fa67a,#17896a)', fontSize: 14, fontWeight: 700, color: '#fff', cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 6px 16px -4px rgba(31,166,122,.5)' }}>✓ Confirm & Verify</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BossViews({ tabId }) {
   const { cfg, db, setActiveTab } = useApp();
   const filterP = useFP();
@@ -208,6 +258,7 @@ export default function BossViews({ tabId }) {
 
 function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
   const { setDb } = useApp();
+  const [verifyRem, setVerifyRem] = useState(null);
   let totalOrdersVal = 0, totalCash = 0, totalPos = 0, totalExp = 0, totalNetExp = 0, totalSent = 0, totalStillToSend = 0;
   cfg.branches.forEach(b => {
     const c = branchCalc(b, cfg, db, filterP);
@@ -217,11 +268,12 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
   const shortfallPays = Object.values(db.payments).filter(p => p.shortfall && p.shortfall > 0);
   const unverifiedRems = filterP(db.remittances.filter(r => !r.verified));
 
-  function verify(id) {
+  function confirmVerify() {
     setDb(prev => ({
       ...prev,
-      remittances: prev.remittances.map(r => r.id === id ? { ...r, verified: true } : r),
+      remittances: prev.remittances.map(r => r.id === verifyRem.id ? { ...r, verified: true } : r),
     }));
+    setVerifyRem(null);
   }
 
   return (
@@ -313,7 +365,7 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
                             </a>
                           : <span style={{ fontSize: 11, color: '#858cab' }}>—</span>}
                       </td>
-                      <td><button className="bv-btn amber" style={{ height: 30, fontSize: 12 }} onClick={() => verify(r.id)}>Verify →</button></td>
+                      <td><button className="bv-btn amber" style={{ height: 30, fontSize: 12 }} onClick={() => setVerifyRem(r)}>Verify →</button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -322,6 +374,7 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
           </>
         )}
       </div>
+      <VerifyModal rem={verifyRem} fmtC={fmtC} onConfirm={confirmVerify} onClose={() => setVerifyRem(null)} />
     </div>
   );
 }
@@ -330,12 +383,14 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
 
 function BossBranches({ filterP, fmtC, cfg, db }) {
   const { setDb } = useApp();
+  const [verifyRem, setVerifyRem] = useState(null);
 
-  function verify(id) {
+  function confirmVerify() {
     setDb(prev => ({
       ...prev,
-      remittances: prev.remittances.map(r => r.id === id ? { ...r, verified: true } : r),
+      remittances: prev.remittances.map(r => r.id === verifyRem.id ? { ...r, verified: true } : r),
     }));
+    setVerifyRem(null);
   }
 
   return (
@@ -416,7 +471,7 @@ function BossBranches({ filterP, fmtC, cfg, db }) {
                               </a>
                             : <span style={{ fontSize: 11, color: '#858cab' }}>—</span>}
                         </td>
-                        <td>{r.verified ? <Blip type="ok">Verified</Blip> : <button className="bv-btn amber" style={{ height: 30, fontSize: 12 }} onClick={() => verify(r.id)}>Verify →</button>}</td>
+                        <td>{r.verified ? <Blip type="ok">Verified</Blip> : <button className="bv-btn amber" style={{ height: 30, fontSize: 12 }} onClick={() => setVerifyRem(r)}>Verify →</button>}</td>
                       </tr>
                     )) : <tr><td colSpan={6}><div className="bv-empty">No remittance logged</div></td></tr>}
                   </tbody>
@@ -426,6 +481,7 @@ function BossBranches({ filterP, fmtC, cfg, db }) {
           );
         })}
       </div>
+      <VerifyModal rem={verifyRem} fmtC={fmtC} onConfirm={confirmVerify} onClose={() => setVerifyRem(null)} />
     </div>
   );
 }
