@@ -664,7 +664,7 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
           <div className="bv-kpis c4" style={{ marginBottom: 16 }}>
             <div className="bv-kpi blue"><div className="bv-kpi-l">Delivered Value</div><div className="bv-kpi-v">{fmtC(allRows.reduce((s,r)=>s+r.totalVal,0))}</div></div>
             <div className="bv-kpi bad"><div className="bv-kpi-l">Delivery Fees</div><div className="bv-kpi-v">−{fmtC(allRows.reduce((s,r)=>s+r.fees,0))}</div></div>
-            <div className="bv-kpi accent"><div className="bv-kpi-l">Amount to be Paid</div><div className="bv-kpi-v">{fmtC(totalPayable)}</div></div>
+            <div className={`bv-kpi ${totalRem > 0 ? 'warn' : 'ok'}`}><div className="bv-kpi-l">Amount to be Paid</div><div className="bv-kpi-v">{fmtC(totalRem)}</div></div>
             <div className="bv-kpi ok"><div className="bv-kpi-l">Amount Paid</div><div className="bv-kpi-v">{fmtC(totalPaid)}</div></div>
           </div>
         )}
@@ -687,7 +687,7 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
                     <td style={{ fontWeight: 700, color: '#1f2fc4' }}>{r.v}</td>
                     <td style={{ textAlign: 'right' }}><Money>{fmtC(r.totalVal)}</Money></td>
                     <td style={{ textAlign: 'right' }}><Money tone="bad">{r.fees > 0 ? `−${fmtC(r.fees)}` : '—'}</Money></td>
-                    <td style={{ textAlign: 'right' }}><Money>{fmtC(r.net)}</Money></td>
+                    <td style={{ textAlign: 'right' }}><Money tone={r.remaining > 0 ? 'bad' : 'ok'}>{fmtC(r.remaining)}</Money></td>
                     <td style={{ textAlign: 'right' }}><Money tone={r.paid > 0 ? 'ok' : ''}>{fmtC(r.paid)}</Money></td>
                   </tr>
                 ))}
@@ -701,7 +701,7 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
             <div className="bv-kpis c4" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: 16 }}>
               <div className="bv-kpi blue"><div className="bv-kpi-l">Delivered Value</div><div className="bv-kpi-v">{fmtC(c.totalVal)}</div></div>
               <div className="bv-kpi bad"><div className="bv-kpi-l">Delivery Fees</div><div className="bv-kpi-v">−{fmtC(c.fees)}</div></div>
-              <div className="bv-kpi accent"><div className="bv-kpi-l">Amount to be Paid</div><div className="bv-kpi-v">{fmtC(c.net)}</div></div>
+              <div className={`bv-kpi ${c.remaining > 0 ? 'warn' : 'ok'}`}><div className="bv-kpi-l">Amount to be Paid</div><div className="bv-kpi-v">{fmtC(c.remaining)}</div></div>
               <div className="bv-kpi ok"><div className="bv-kpi-l">Amount Paid</div><div className="bv-kpi-v">{fmtC(c.paid)}</div></div>
             </div>
 
