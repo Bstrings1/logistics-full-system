@@ -216,7 +216,8 @@ function MgrSend({ filterP, fmtC, branch }) {
 
   // All-time per-date breakdown to show past unremitted days
   const allPays = Object.values(db.payments).filter(p => p.branch === b);
-  const allSent = db.remittances.filter(r => r.branch === b).reduce((s, r) => s + r.amount, 0);
+  const allRems = db.remittances.filter(r => r.branch === b);
+  const allSent = allRems.reduce((s, r) => s + r.amount, 0);
   const allCash = allPays.reduce((s, p) => s + (p.cash || 0), 0);
   const allExp = db.expenses.filter(e => e.branch === b).reduce((s, e) => s + e.amount, 0);
   const allOutstanding = Math.max(0, allCash - allExp - allSent);
@@ -229,8 +230,11 @@ function MgrSend({ filterP, fmtC, branch }) {
     }, {})
   ).map(row => {
     const dayExp = db.expenses.filter(e => e.branch === b && e.date === row.date).reduce((s, e) => s + e.amount, 0);
-    return { ...row, exp: dayExp, net: Math.max(0, row.cash - dayExp) };
-  }).filter(row => row.date !== TODAY && row.net > 0).sort((a, b) => a.date.localeCompare(b.date));
+    const dayPaid = allRems.filter(r => r.date === row.date).reduce((s, r) => s + r.amount, 0);
+    const net = Math.max(0, row.cash - dayExp);
+    const owe = Math.max(0, net - dayPaid);
+    return { date: row.date, net, paid: dayPaid, owe };
+  }).filter(row => row.date !== TODAY && row.owe > 0).sort((a, b) => a.date.localeCompare(b.date));
   const [fields, setFields] = useState({ amount: '', bank: '', account: '', txID: '' });
   const [receipt, setReceipt] = useState(null);
   const [receiptPreview, setReceiptPreview] = useState(null);
@@ -295,18 +299,18 @@ function MgrSend({ filterP, fmtC, branch }) {
               <thead>
                 <tr style={{ borderBottom: '1px solid #fecaca' }}>
                   <th style={{ textAlign: 'left', padding: '4px 8px', color: '#be123c', fontWeight: 700 }}>Date</th>
-                  <th style={{ textAlign: 'right', padding: '4px 8px', color: '#be123c', fontWeight: 700 }}>Cash</th>
-                  <th style={{ textAlign: 'right', padding: '4px 8px', color: '#be123c', fontWeight: 700 }}>Expenses</th>
                   <th style={{ textAlign: 'right', padding: '4px 8px', color: '#be123c', fontWeight: 700 }}>Net Due</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px', color: '#be123c', fontWeight: 700 }}>Paid</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px', color: '#be123c', fontWeight: 700 }}>Owe</th>
                 </tr>
               </thead>
               <tbody>
                 {dateRows.map(row => (
                   <tr key={row.date} style={{ borderBottom: '1px solid #fee2e2' }}>
                     <td style={{ padding: '6px 8px', fontWeight: 600, color: '#7f1d1d' }}>{row.date}</td>
-                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#3a4267' }}>{fmtC(row.cash)}</td>
-                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#e0425a' }}>{row.exp > 0 ? `−${fmtC(row.exp)}` : '—'}</td>
-                    <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, color: '#e0425a' }}>{fmtC(row.net)}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#3a4267' }}>{fmtC(row.net)}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#1fa67a', fontWeight: 600 }}>{row.paid > 0 ? fmtC(row.paid) : '—'}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, color: '#e0425a' }}>{fmtC(row.owe)}</td>
                   </tr>
                 ))}
               </tbody>
