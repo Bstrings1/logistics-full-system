@@ -661,10 +661,11 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
       <div className="pg-body">
         <DateFilter />
         {!vpSelected && (
-          <div className="bv-kpis c3" style={{ marginBottom: 16 }}>
-            <div className="bv-kpi"><div className="bv-kpi-l">Total Payable</div><div className="bv-kpi-v">{fmtC(totalPayable)}</div></div>
-            <div className="bv-kpi ok"><div className="bv-kpi-l">Paid</div><div className="bv-kpi-v">{fmtC(totalPaid)}</div></div>
-            <div className={`bv-kpi ${totalRem > 0 ? 'warn' : 'ok'}`}><div className="bv-kpi-l">Remaining</div><div className="bv-kpi-v">{fmtC(totalRem)}</div></div>
+          <div className="bv-kpis c4" style={{ marginBottom: 16 }}>
+            <div className="bv-kpi blue"><div className="bv-kpi-l">Delivered Value</div><div className="bv-kpi-v">{fmtC(allRows.reduce((s,r)=>s+r.totalVal,0))}</div></div>
+            <div className="bv-kpi bad"><div className="bv-kpi-l">Delivery Fees</div><div className="bv-kpi-v">−{fmtC(allRows.reduce((s,r)=>s+r.fees,0))}</div></div>
+            <div className="bv-kpi accent"><div className="bv-kpi-l">Amount to be Paid</div><div className="bv-kpi-v">{fmtC(totalPayable)}</div></div>
+            <div className="bv-kpi ok"><div className="bv-kpi-l">Amount Paid</div><div className="bv-kpi-v">{fmtC(totalPaid)}</div></div>
           </div>
         )}
 
@@ -679,15 +680,15 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
         {!vpSelected && (
           <div className="bv-tw">
             <table>
-              <thead><tr><th>Vendor</th><th style={{ textAlign: 'right' }}>Net Payable</th><th style={{ textAlign: 'right' }}>Paid</th><th style={{ textAlign: 'right' }}>Remaining</th><th>Status</th></tr></thead>
+              <thead><tr><th>Vendor</th><th style={{ textAlign: 'right' }}>Delivered Value</th><th style={{ textAlign: 'right' }}>Delivery Fees</th><th style={{ textAlign: 'right' }}>Amount to be Paid</th><th style={{ textAlign: 'right' }}>Amount Paid</th></tr></thead>
               <tbody>
                 {allRows.map(r => (
                   <tr key={r.v} style={{ cursor: 'pointer' }} onClick={() => setVpSelected(r.v)}>
                     <td style={{ fontWeight: 700, color: '#1f2fc4' }}>{r.v}</td>
+                    <td style={{ textAlign: 'right' }}><Money>{fmtC(r.totalVal)}</Money></td>
+                    <td style={{ textAlign: 'right' }}><Money tone="bad">{r.fees > 0 ? `−${fmtC(r.fees)}` : '—'}</Money></td>
                     <td style={{ textAlign: 'right' }}><Money>{fmtC(r.net)}</Money></td>
                     <td style={{ textAlign: 'right' }}><Money tone={r.paid > 0 ? 'ok' : ''}>{fmtC(r.paid)}</Money></td>
-                    <td style={{ textAlign: 'right' }}><Money tone={r.remaining > 0 ? 'bad' : 'ok'}>{r.remaining === 0 ? '—' : fmtC(r.remaining)}</Money></td>
-                    <td>{r.st === 'paid' ? <Pill type="g">Paid</Pill> : r.st === 'partial' ? <Pill type="a">Partial</Pill> : <Pill type="r">Unpaid</Pill>}</td>
                   </tr>
                 ))}
               </tbody>
