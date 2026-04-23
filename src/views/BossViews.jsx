@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabase';
 import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, calcBonus, bonusRate, ot, gp, REVENUE_STATUSES, TODAY } from '../utils/helpers';
 import DateFilter from '../components/DateFilter';
 
@@ -608,8 +609,9 @@ function BossRiders({ fmtC, cfg, db }) {
 // ─── Vendor Payments ──────────────────────────────────────────────────────────
 
 function BossVendorPay({ filterP, fmtC, cfg, db }) {
-  const { setDb, vpSelected, setVpSelected } = useApp();
+  const { vpSelected, setVpSelected, reload } = useApp();
   const [payFields, setPayFields] = useState({ amount: '', date: TODAY, bank: '', account: '', accountName: '', txID: '' });
+  const [saving, setSaving] = useState(false);
 
   function vendorCalc(vn) {
     const vOrds = filterP(db.orders.filter(o => gp(o).some(p => p.vendor === vn) && (REVENUE_STATUSES.includes(o.status) || o.status === 'Failed' || o.status === 'Replaced')));
@@ -623,22 +625,25 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
     return { totalVal, fees, net, paid, remaining };
   }
 
-  function savePayment() {
+  async function savePayment() {
     const amount = Number(payFields.amount);
     if (!amount) { alert('Enter an amount'); return; }
     if (!payFields.txID) { alert('Transaction ID required'); return; }
-    setDb(prev => ({
-      ...prev,
-      vendorPayments: {
-        ...prev.vendorPayments,
-        [vpSelected]: [...(prev.vendorPayments[vpSelected] || []), {
-          id: Date.now(),
-          amount, txID: payFields.txID, date: payFields.date,
-          bank: payFields.bank, account: payFields.account, accountName: payFields.accountName,
-        }],
-      },
-    }));
+    setSaving(true);
+    const { error } = await supabase.from('vendor_payments').insert({
+      id: Date.now(),
+      vendor: vpSelected,
+      amount,
+      tx_id: payFields.txID,
+      date: payFields.date,
+      bank: payFields.bank || null,
+      account: payFields.account || null,
+      account_name: payFields.accountName || null,
+    });
+    if (error) { alert('Failed to save: ' + error.message); setSaving(false); return; }
+    await reload();
     setPayFields({ amount: '', date: TODAY, bank: '', account: '', accountName: '', txID: '' });
+    setSaving(false);
   }
 
   const c = vpSelected ? vendorCalc(vpSelected) : null;
@@ -723,7 +728,7 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
                   <div><label className="bv-lbl">Account Name</label><input className="bv-inp" value={payFields.accountName} onChange={e => setPayFields(f => ({ ...f, accountName: e.target.value }))} /></div>
                   <div><label className="bv-lbl">Transaction ID <span style={{ color: '#e0425a' }}>*</span></label><input className="bv-inp" value={payFields.txID} onChange={e => setPayFields(f => ({ ...f, txID: e.target.value }))} placeholder="TRF..." style={{ fontFamily: 'monospace' }} /></div>
                 </div>
-                <button className="bv-btn primary" onClick={savePayment}>Submit Payment →</button>
+                <button className="bv-btn primary" onClick={savePayment} disabled={saving}>{saving ? 'Saving...' : 'Submit Payment →'}</button>
               </div>
             )}
 

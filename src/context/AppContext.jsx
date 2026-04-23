@@ -443,6 +443,7 @@ export function AppProvider({ children }) {
       cfgPanelOpen, setCfgPanelOpen,
       vpSelected, setVpSelected,
       loading,
+      reload: loadAll,
     }}>
       {children}
     </AppContext.Provider>
