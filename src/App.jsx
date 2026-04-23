@@ -8,6 +8,7 @@ import ManagerViews from './views/ManagerViews';
 import RiderManagerViews from './views/RiderManagerViews';
 import VendorViews from './views/VendorViews';
 import InventoryViews from './views/InventoryViews';
+import DeliveryFeeViews from './views/DeliveryFeeViews';
 import AdminPanel from './views/AdminPanel';
 
 function AppContent() {
@@ -49,6 +50,7 @@ function AppContent() {
     if (session.role === 'vendor') return <VendorViews tabId={activeTab} />;
     if (session.role === 'inventory') return <InventoryViews tabId={activeTab} />;
     if (session.role === 'inventory-admin') return <InventoryViews tabId={activeTab} />;
+    if (session.role === 'delivery-fee') return <DeliveryFeeViews />;
     return null;
   }
 

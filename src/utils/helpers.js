@@ -108,6 +108,7 @@ export function buildUsers(cfg) {
     u.push({ username: `${bl}_inv`, password: creds[`inventory-${b}`] ?? `${bl}inv2025`, role: 'inventory', branch: b, display: `${b} Inventory` });
   });
   u.push({ username: 'inv_admin', password: creds['inventory-admin'] ?? 'invaadmin2025', role: 'inventory-admin', branch: null, display: 'Inventory Admin' });
+  u.push({ username: 'delivery_fee', password: creds['delivery-fee'] ?? 'fee@2025', role: 'delivery-fee', branch: null, display: 'Delivery Fee Manager' });
   cfg.vendors.forEach(v => {
     const vl = v.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
     u.push({ username: `vendor_${vl}`, password: creds[`vendor-${v}`] ?? 'vendor_2025', role: 'vendor', vendorName: v, display: v });
@@ -119,7 +120,7 @@ export const ICONS = {
   overview: '◈', branches: '⊞', orders: '≡', riders: '◎', remittances: '⇄',
   'vendor-pay': '⊕', inventory: '▦', tools: '⚙', remittance: '⇄', send: '↑',
   expenses: '⊟', log: '＋', assign: '↗', update: '✎', 'my-riders': '◎',
-  deliveries: '◉', invoice: '□', stock: '▦', 'waybill-in': '↓', 'waybill-out': '↑', transfer: '⇌', 'inv-history': '◷',
+  deliveries: '◉', invoice: '□', stock: '▦', 'waybill-in': '↓', 'waybill-out': '↑', transfer: '⇌', 'inv-history': '◷', fees: '◈',
 };
 
 export function getTabs(role) {
@@ -130,7 +131,7 @@ export function getTabs(role) {
     { id: 'dfees', l: 'Delivery Fees' }, { id: 'loans', l: 'Staff Loans' }, { id: 'tools', l: 'CEO Tools' },
   ];
   if (role === 'manager') return [
-    { id: 'remittance', l: 'Remittance' }, { id: 'send', l: 'Send to Boss' }, { id: 'expenses', l: 'Expenses' }, { id: 'riders', l: 'Riders' },
+    { id: 'remittance', l: 'Remittance' }, { id: 'send', l: 'Send to Boss' }, { id: 'expenses', l: 'Expenses' }, { id: 'riders', l: 'Riders' }, { id: 'loans', l: 'Staff Loans' },
   ];
   if (role === 'rider-manager') return [
     { id: 'log', l: 'Log Orders' }, { id: 'assign', l: 'Assign' }, { id: 'update', l: 'Update' }, { id: 'my-riders', l: 'My Riders' },
@@ -140,6 +141,7 @@ export function getTabs(role) {
   if (role === 'inventory-admin') return [
     { id: 'stock', l: 'Stock' }, { id: 'waybill-in', l: 'Waybill In' }, { id: 'waybill-out', l: 'Waybill Out' }, { id: 'transfer', l: 'Transfer' }, { id: 'inv-history', l: 'History' },
   ];
+  if (role === 'delivery-fee') return [{ id: 'fees', l: 'Delivery Fees' }];
   return [];
 }
 
