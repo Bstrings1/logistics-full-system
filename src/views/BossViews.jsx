@@ -942,6 +942,7 @@ function BossTools({ setActiveTab, cfg }) {
 function BossDeliveryFees({ fmtC, cfg, db, setActiveTab }) {
   const { setDb } = useApp();
   const [feeInputs, setFeeInputs] = useState({});
+  const [editingFee, setEditingFee] = useState({});
 
   const eligible = db.orders.filter(o => o.status && o.status !== 'Not Delivered' && o.status !== 'Unassigned' && o.status !== 'Pending');
   const pending = eligible.filter(o => !db.deliveryFees[o.id]);
@@ -952,6 +953,13 @@ function BossDeliveryFees({ fmtC, cfg, db, setActiveTab }) {
     if (!v) { alert('Enter a fee amount'); return; }
     setDb(prev => ({ ...prev, deliveryFees: { ...prev.deliveryFees, [orderId]: v } }));
     setFeeInputs(prev => { const n = { ...prev }; delete n[orderId]; return n; });
+  }
+
+  function updateFee(orderId) {
+    const v = Number(editingFee[orderId] || 0);
+    if (!v) { alert('Enter a fee amount'); return; }
+    setDb(prev => ({ ...prev, deliveryFees: { ...prev.deliveryFees, [orderId]: v } }));
+    setEditingFee(prev => { const n = { ...prev }; delete n[orderId]; return n; });
   }
 
   return (
@@ -1003,7 +1011,7 @@ function BossDeliveryFees({ fmtC, cfg, db, setActiveTab }) {
             <div className="bv-sec" style={{ color: '#1fa67a' }}>Fee set · {done.length}</div>
             <div className="bv-tw">
               <table>
-                <thead><tr><th>Address</th><th>Status</th><th>Products</th><th>Rider</th><th>Order Total</th><th>Fee</th><th>Net to Vendor</th></tr></thead>
+                <thead><tr><th>Address</th><th>Status</th><th>Products</th><th>Rider</th><th>Order Total</th><th>Fee</th><th>Net to Vendor</th><th></th></tr></thead>
                 <tbody>
                   {done.map(o => {
                     const total = ot(o); const fee = db.deliveryFees[o.id];
@@ -1022,8 +1030,23 @@ function BossDeliveryFees({ fmtC, cfg, db, setActiveTab }) {
                         </td>
                         <td style={{ fontSize: 12 }}>{o.rider}</td>
                         <td><Money>{fmtC(total)}</Money></td>
-                        <td><Money tone="bad">−{fmtC(fee)}</Money></td>
-                        <td><Money tone="ok">{fmtC(Math.max(0, total - fee))}</Money></td>
+                        <td>
+                          {editingFee[o.id] !== undefined ? (
+                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                              <input className="bv-inp" type="number" style={{ width: 90, padding: '4px 8px', fontSize: 13 }} value={editingFee[o.id]} onChange={e => setEditingFee(p => ({ ...p, [o.id]: e.target.value }))} />
+                              <button className="bv-btn amber" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => updateFee(o.id)}>Save</button>
+                              <button onClick={() => setEditingFee(p => { const n = { ...p }; delete n[o.id]; return n; })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 18, lineHeight: 1 }}>×</button>
+                            </div>
+                          ) : (
+                            <Money tone="bad">−{fmtC(fee)}</Money>
+                          )}
+                        </td>
+                        <td><Money tone="ok">{fmtC(Math.max(0, total - (editingFee[o.id] !== undefined ? Number(editingFee[o.id]) : fee)))}</Money></td>
+                        <td>
+                          {editingFee[o.id] === undefined && (
+                            <button onClick={() => setEditingFee(p => ({ ...p, [o.id]: fee }))} className="bv-btn" style={{ padding: '4px 12px', fontSize: 11 }}>✎ Edit</button>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}

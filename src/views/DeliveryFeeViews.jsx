@@ -32,6 +32,7 @@ function Money({ children, tone }) {
 export default function DeliveryFeeViews() {
   const { db, setDb, cfg } = useApp();
   const [feeInputs, setFeeInputs] = useState({});
+  const [editingFee, setEditingFee] = useState({});
   const [search, setSearch] = useState('');
 
   const fmt = v => (cfg.currency || '₦') + Number(v || 0).toLocaleString();
@@ -52,6 +53,13 @@ export default function DeliveryFeeViews() {
 
   const pending = filter(eligible.filter(o => !db.deliveryFees[o.id]));
   const done = filter(eligible.filter(o => db.deliveryFees[o.id]));
+
+  function updateFee(orderId) {
+    const v = Number(editingFee[orderId] || 0);
+    if (!v) { alert('Enter a fee amount'); return; }
+    setDb(prev => ({ ...prev, deliveryFees: { ...prev.deliveryFees, [orderId]: v } }));
+    setEditingFee(prev => { const n = { ...prev }; delete n[orderId]; return n; });
+  }
 
   function saveFee(orderId) {
     const v = Number(feeInputs[orderId] || 0);
@@ -145,6 +153,7 @@ export default function DeliveryFeeViews() {
                     <th>Order Total</th>
                     <th>Fee</th>
                     <th>Net to Vendor</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -169,8 +178,23 @@ export default function DeliveryFeeViews() {
                         </td>
                         <td style={{ fontSize: 12 }}>{o.branch} · {o.rider}</td>
                         <td><Money>{fmt(total)}</Money></td>
-                        <td><Money tone="bad">−{fmt(fee)}</Money></td>
-                        <td><Money tone="ok">{fmt(Math.max(0, total - fee))}</Money></td>
+                        <td>
+                          {editingFee[o.id] !== undefined ? (
+                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                              <input className="df-inp" type="number" style={{ width: 90, padding: '4px 8px', fontSize: 13 }} value={editingFee[o.id]} onChange={e => setEditingFee(p => ({ ...p, [o.id]: e.target.value }))} />
+                              <button className="df-btn" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => updateFee(o.id)}>Save</button>
+                              <button onClick={() => setEditingFee(p => { const n = { ...p }; delete n[o.id]; return n; })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 18, lineHeight: 1 }}>×</button>
+                            </div>
+                          ) : (
+                            <Money tone="bad">−{fmt(fee)}</Money>
+                          )}
+                        </td>
+                        <td><Money tone="ok">{fmt(Math.max(0, total - (editingFee[o.id] !== undefined ? Number(editingFee[o.id]) : fee)))}</Money></td>
+                        <td>
+                          {editingFee[o.id] === undefined && (
+                            <button onClick={() => setEditingFee(p => ({ ...p, [o.id]: fee }))} style={{ background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', color: '#6b7280' }}>✎ Edit</button>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
