@@ -136,7 +136,10 @@ export function getTabs(role) {
   if (role === 'rider-manager') return [
     { id: 'log', l: 'Log Orders' }, { id: 'assign', l: 'Assign' }, { id: 'update', l: 'Update' }, { id: 'my-riders', l: 'My Riders' },
   ];
-  if (role === 'vendor') return [{ id: 'deliveries', l: 'Deliveries' }, { id: 'invoice', l: 'Invoice' }];
+  if (role === 'vendor') return [
+    { id: 'deliveries', l: 'Deliveries' }, { id: 'delivered', l: 'Delivered' },
+    { id: 'failed', l: 'Failed' }, { id: 'pending', l: 'Pending' }, { id: 'invoice', l: 'Invoice' },
+  ];
   if (role === 'inventory') return [{ id: 'stock', l: 'Stock' }];
   if (role === 'inventory-admin') return [
     { id: 'stock', l: 'Stock' }, { id: 'waybill-in', l: 'Waybill In' }, { id: 'waybill-out', l: 'Waybill Out' }, { id: 'transfer', l: 'Transfer' }, { id: 'inv-history', l: 'History' },
