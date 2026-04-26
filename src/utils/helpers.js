@@ -55,7 +55,7 @@ export function getBonusCycleOrders(rider, db) {
   const cycleStart = new Date(now.getFullYear(), now.getMonth() + (d < 14 ? -1 : 0), 14);
   const cycleEnd = new Date(cycleStart.getFullYear(), cycleStart.getMonth() + 1, 15);
   return db.orders.filter(o =>
-    o.rider === rider && REVENUE_STATUSES.includes(o.status) &&
+    o.rider === rider && o.status === 'Delivered' &&
     new Date(o.date) >= cycleStart && new Date(o.date) <= cycleEnd
   );
 }
