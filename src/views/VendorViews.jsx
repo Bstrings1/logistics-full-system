@@ -100,11 +100,47 @@ function VendorDeliveries({ vn, filterP }) {
     return gp(o).filter(p => p.vendor === vn).reduce((s, p) => s + (Number(p.price) || 0) * (Number(p.qty) || 1), 0);
   }
 
-  const delivered = orders.filter(o => REVENUE_STATUSES.includes(o.status));
-  const totalVal = delivered.reduce((s, o) => s + vt(o), 0);
+  const deliveredOrders = orders.filter(o => REVENUE_STATUSES.includes(o.status));
+  const failedOrders    = orders.filter(o => o.status === 'Failed' || o.status === 'Not Delivered');
+  const pendingOrders   = orders.filter(o => !REVENUE_STATUSES.includes(o.status) && o.status !== 'Failed' && o.status !== 'Not Delivered');
+  const totalVal = deliveredOrders.reduce((s, o) => s + vt(o), 0);
 
   const statusColor = { Delivered:'#166534',Completed:'#166534',Replaced:'#92400e',Failed:'#991b1b',Cancelled:'#991b1b','Not Delivered':'#374151',Pending:'#92400e',Unassigned:'#92400e' };
   const statusBg   = { Delivered:'#dcfce7',Completed:'#dcfce7',Replaced:'#fef3c7',Failed:'#fee2e2',Cancelled:'#fee2e2','Not Delivered':'#f3f4f6',Pending:'#fef3c7',Unassigned:'#fef3c7' };
+
+  function OrderCard({ o }) {
+    const prods = gp(o).filter(p => p.vendor === vn);
+    const val = vt(o);
+    const isRevenue = REVENUE_STATUSES.includes(o.status);
+    return (
+      <div className="vv-order-card">
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, marginBottom:10 }}>
+          <div style={{ minWidth:0, flex:1 }}>
+            <p style={{ fontWeight:700, fontSize:15, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{o.customerName}</p>
+            <p style={{ fontSize:12, color:'var(--t3)' }}>{o.phone || '—'} &nbsp;·&nbsp; {o.date}</p>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6, flexShrink:0 }}>
+            <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:20, fontSize:12, fontWeight:700, background:statusBg[o.status]||'#f3f4f6', color:statusColor[o.status]||'#374151' }}>{o.status}</span>
+            <span style={{ fontSize:16, fontWeight:800, fontFamily:"'JetBrains Mono',monospace", color:isRevenue?'#1a3a8f':'var(--t3)' }}>{fmt(val, currency)}</span>
+          </div>
+        </div>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+          {prods.map((p, i) => (
+            <span key={i} className="vv-prod-pill">
+              {p.name}{(Number(p.qty)||1) > 1 ? ` ×${p.qty}` : ''}
+              {p.price ? <span style={{ marginLeft:6, opacity:.6 }}>{fmt((Number(p.price))*(Number(p.qty)||1), currency)}</span> : null}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const SecHeader = ({ label, count, color }) => (
+    <div style={{ fontSize:11, fontWeight:800, letterSpacing:'.1em', textTransform:'uppercase', color, margin:'22px 0 10px', paddingBottom:6, borderBottom:`2px solid ${color}22` }}>
+      {label} &nbsp;·&nbsp; {count}
+    </div>
+  );
 
   return (
     <div className="vv">
@@ -122,7 +158,7 @@ function VendorDeliveries({ vn, filterP }) {
           </div>
           <div className="vv-hero-card">
             <p className="vv-hero-l">Delivered</p>
-            <p className="vv-hero-v green">{delivered.length}</p>
+            <p className="vv-hero-v green">{deliveredOrders.length}</p>
           </div>
           <div className="vv-hero-card">
             <p className="vv-hero-l">Total Value</p>
@@ -131,36 +167,29 @@ function VendorDeliveries({ vn, filterP }) {
         </div>
       </div>
 
-      {orders.length === 0
-        ? <div className="empty-box"><p className="empty-t">No deliveries in this period</p></div>
-        : orders.map(o => {
-          const prods = gp(o).filter(p => p.vendor === vn);
-          const val = vt(o);
-          const isRevenue = REVENUE_STATUSES.includes(o.status);
-          return (
-            <div key={o.id} className="vv-order-card">
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, marginBottom:10 }}>
-                <div style={{ minWidth:0, flex:1 }}>
-                  <p style={{ fontWeight:700, fontSize:15, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{o.customerName}</p>
-                  <p style={{ fontSize:12, color:'var(--t3)' }}>{o.phone || '—'} &nbsp;·&nbsp; {o.date}</p>
-                </div>
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6, flexShrink:0 }}>
-                  <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:20, fontSize:12, fontWeight:700, background:statusBg[o.status]||'#f3f4f6', color:statusColor[o.status]||'#374151' }}>{o.status}</span>
-                  <span style={{ fontSize:16, fontWeight:800, fontFamily:"'JetBrains Mono',monospace", color:isRevenue?'#1a3a8f':'var(--t3)' }}>{fmt(val, currency)}</span>
-                </div>
-              </div>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                {prods.map((p, i) => (
-                  <span key={i} className="vv-prod-pill">
-                    {p.name}{(Number(p.qty)||1) > 1 ? ` ×${p.qty}` : ''}
-                    {p.price ? <span style={{ marginLeft:6, opacity:.6 }}>{fmt((Number(p.price))*(Number(p.qty)||1), currency)}</span> : null}
-                  </span>
-                ))}
-              </div>
-            </div>
-          );
-        })
-      }
+      {orders.length === 0 && <div className="empty-box"><p className="empty-t">No deliveries in this period</p></div>}
+
+      {orders.length > 0 && (
+        <>
+          <SecHeader label="Pending" count={pendingOrders.length} color="#d97706" />
+          {pendingOrders.length === 0
+            ? <p style={{ color:'#aaa', fontSize:13, marginBottom:12 }}>No pending orders.</p>
+            : pendingOrders.map(o => <OrderCard key={o.id} o={o} />)
+          }
+
+          <SecHeader label="Delivered" count={deliveredOrders.length} color="#16a34a" />
+          {deliveredOrders.length === 0
+            ? <p style={{ color:'#aaa', fontSize:13, marginBottom:12 }}>No delivered orders.</p>
+            : deliveredOrders.map(o => <OrderCard key={o.id} o={o} />)
+          }
+
+          <SecHeader label="Failed / Not Delivered" count={failedOrders.length} color="#dc2626" />
+          {failedOrders.length === 0
+            ? <p style={{ color:'#aaa', fontSize:13, marginBottom:12 }}>No failed orders.</p>
+            : failedOrders.map(o => <OrderCard key={o.id} o={o} />)
+          }
+        </>
+      )}
     </div>
   );
 }
