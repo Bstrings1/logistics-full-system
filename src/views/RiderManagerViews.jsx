@@ -366,9 +366,24 @@ function RiderUpdate({ filterP, fmtC, branch }) {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [completingId, setCompletingId] = useState(null);
   const [completingAmt, setCompletingAmt] = useState('');
+  const [failModal, setFailModal] = useState(null);
+  const [failReason, setFailReason] = useState('');
 
-  function setStatus(id, status) {
-    setDb(prev => ({ ...prev, orders: prev.orders.map(o => String(o.id) === String(id) ? { ...o, status } : o) }));
+  function setStatus(id, status, extra = {}) {
+    setDb(prev => ({ ...prev, orders: prev.orders.map(o => String(o.id) === String(id) ? { ...o, status, ...extra } : o) }));
+  }
+
+  function openFailModal(id) {
+    setFailModal(id);
+    setFailReason('');
+    setOpenDropdown(null);
+  }
+
+  function confirmFail() {
+    if (!failReason.trim()) { alert('Please enter a reason for failure'); return; }
+    setStatus(failModal, 'Failed', { failReason: failReason.trim() });
+    setFailModal(null);
+    setFailReason('');
   }
 
   function startComplete(order) {
@@ -495,7 +510,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                     {openDropdown === o.id && (
                       <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.15)', zIndex: 200, minWidth: 140, overflow: 'hidden' }}>
                         <button style={{ display: 'block', width: '100%', padding: '11px 14px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', borderBottom: '1px solid var(--border-soft)', color: '#0d9488', cursor: 'pointer' }} onClick={() => { setEditModalStatus('Completed'); setEditModalOrderId(o.id); setOpenDropdown(null); }}>⊕ Completed</button>
-                        <button style={{ display: 'block', width: '100%', padding: '11px 14px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', borderBottom: '1px solid var(--border-soft)', color: 'var(--red)', cursor: 'pointer' }} onClick={() => { setStatus(o.id, 'Failed'); setOpenDropdown(null); }}>✗ Failed</button>
+                        <button style={{ display: 'block', width: '100%', padding: '11px 14px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', borderBottom: '1px solid var(--border-soft)', color: 'var(--red)', cursor: 'pointer' }} onClick={() => openFailModal(o.id)}>✗ Failed</button>
                         <button style={{ display: 'block', width: '100%', padding: '11px 14px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: 'var(--amber)', cursor: 'pointer' }} onClick={() => { setStatus(o.id, 'Replaced'); setOpenDropdown(null); }}>↩ Replaced</button>
                       </div>
                     )}
@@ -553,6 +568,27 @@ function RiderUpdate({ filterP, fmtC, branch }) {
           <div className="empty-box"><p className="empty-t">No orders in this period</p></div>
         )}
       </div>
+
+      {failModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 400, boxShadow: '0 12px 40px rgba(0,0,0,.18)' }}>
+            <p style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>Why did this order fail?</p>
+            <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>Please provide a reason before marking as failed.</p>
+            <textarea
+              autoFocus
+              rows={3}
+              style={{ width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
+              placeholder="e.g. Customer not available, Wrong address, Order rejected…"
+              value={failReason}
+              onChange={e => setFailReason(e.target.value)}
+            />
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button onClick={() => setFailModal(null)} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid #e5e7eb', background: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+              <button onClick={confirmFail} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Mark as Failed</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

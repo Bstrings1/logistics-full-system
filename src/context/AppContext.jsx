@@ -154,6 +154,7 @@ function rowsToDb({ orders = [], riders = [], payments = [], expenses = [],
       customerName: o.customer_name, phone: o.phone, address: o.address,
       status: o.status, date: o.date, products: o.products || [],
       paidAmount: o.paid_amount !== undefined ? o.paid_amount : undefined,
+      failReason: o.fail_reason || null,
     })),
     riders: ridersObj,
     payments: paymentsObj,
@@ -161,7 +162,7 @@ function rowsToDb({ orders = [], riders = [], payments = [], expenses = [],
     riderExpenses: riderExpenses.map(e => ({ id: e.id, branch: e.branch, rider: e.rider, amount: e.amount, desc: e.description, date: e.date })),
     remittances: remittances.map(r => ({ id: r.id, branch: r.branch, amount: r.amount, txID: r.tx_id, date: r.date, bank: r.bank, account: r.account, verified: r.verified || false, receiptUrl: r.receipt_url || null })),
     deliveryFees: deliveryFeesObj,
-    loans: loans.map(l => ({ id: l.id, staff: l.staff, amount: l.amount, salary: l.salary, date: l.date, repayments: l.repayments || [] })),
+    loans: loans.map(l => ({ id: l.id, branch: l.branch || null, staff: l.staff, amount: l.amount, salary: l.salary, date: l.date, note: l.note || '', repayments: l.repayments || [] })),
     inventory: inventoryObj,
     vendorPayments: vendorPaymentsObj,
     inventoryHistory: inventoryHistory.map(h => ({
@@ -185,6 +186,7 @@ async function syncChanges(prev, next) {
         customer_name: o.customerName, phone: o.phone, address: o.address,
         status: o.status, date: o.date, products: o.products,
         paid_amount: o.paidAmount !== undefined ? o.paidAmount : null,
+        fail_reason: o.failReason || null,
       }))));
     }
     if (toDelete.length) {
@@ -253,7 +255,7 @@ async function syncChanges(prev, next) {
     const toUpsert = next.loans.filter(l => prevMap.get(l.id) !== JSON.stringify(l));
     if (toUpsert.length) {
       ops.push(supabase.from('loans').upsert(toUpsert.map(l => ({
-        id: l.id, staff: l.staff, amount: l.amount, salary: l.salary, date: l.date, repayments: l.repayments,
+        id: l.id, branch: l.branch || null, staff: l.staff, amount: l.amount, salary: l.salary, date: l.date, note: l.note || null, repayments: l.repayments,
       }))));
     }
   }
