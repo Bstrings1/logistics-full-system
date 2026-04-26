@@ -457,7 +457,7 @@ function MgrExpenses({ filterP, fmtC, branch }) {
 function MgrRiders({ filterP, fmtC, branch }) {
   const { cfg, db } = useApp();
   const b = branch;
-  const fo = filterP(db.orders.filter(o => o.branch === b && REVENUE_STATUSES.includes(o.status)));
+  const allOrders = filterP(db.orders.filter(o => o.branch === b));
   const riders = db.riders[b] || [];
 
   return (
@@ -467,17 +467,37 @@ function MgrRiders({ filterP, fmtC, branch }) {
         <DateFilter />
         <div className="card">
           <table className="tbl">
-            <thead><tr><th>Rider</th><th>Deliveries</th><th>Value</th><th>Cycle Bonus</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Rider</th>
+                <th>Total Orders</th>
+                <th>Total Delivered</th>
+                <th>Returns</th>
+                <th>Success Rate</th>
+                <th>Cycle Bonus</th>
+              </tr>
+            </thead>
             <tbody>
               {riders.map(name => {
-                const ords = fo.filter(o => o.rider === name);
-                const val = ords.reduce((s, o) => s + ot(o), 0);
+                const ords = allOrders.filter(o => o.rider === name);
+                const delivered = ords.filter(o => REVENUE_STATUSES.includes(o.status)).length;
+                const returns = ords.filter(o => o.status === 'Failed' || o.status === 'Not Delivered').length;
+                const rate = ords.length > 0 ? Math.round((delivered / ords.length) * 100) : 0;
                 const cc = getBonusCycleOrders(name, db).length;
                 return (
                   <tr key={name}>
                     <td><div className="row" style={{ gap: 9 }}><Av name={name} size={26} /><p style={{ fontWeight: 500 }}>{name}</p></div></td>
                     <td style={{ fontWeight: 600 }}>{ords.length}</td>
-                    <td style={{ fontWeight: 600 }}>{fmtC(val)}</td>
+                    <td style={{ fontWeight: 600, color: 'var(--green)' }}>{delivered}</td>
+                    <td style={{ fontWeight: 600, color: returns > 0 ? 'var(--red)' : 'var(--t4)' }}>{returns}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ flex: 1, background: '#e5e7eb', borderRadius: 4, height: 6, overflow: 'hidden', minWidth: 60 }}>
+                          <div style={{ width: `${rate}%`, background: rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--amber)' : 'var(--red)', height: '100%', transition: 'width .3s' }} />
+                        </div>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--amber)' : 'var(--red)', whiteSpace: 'nowrap' }}>{rate}%</span>
+                      </div>
+                    </td>
                     <td style={{ fontWeight: 700, color: 'var(--purple)' }}>{fmtC(calcBonus(cc, name, cfg))}</td>
                   </tr>
                 );
