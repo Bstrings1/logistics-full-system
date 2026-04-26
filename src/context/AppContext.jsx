@@ -69,7 +69,12 @@ export const INITIAL_CFG = {
     'Mk oil': ['Mk oil'],
     'Fortune': ['Ginger serum'],
   },
-  bonusTiers: [{ upTo: 200, rate: 200 }, { upTo: 250, rate: 400 }, { upTo: 300, rate: 500 }, { upTo: Infinity, rate: 700 }],
+  bonusTiers: [
+    { minOrders: 180, maxOrders: 199, rates: [{ minPct: 70, maxPct: 77, rate: 200 }, { minPct: 78, maxPct: 85, rate: 250 }, { minPct: 86, rate: 300 }] },
+    { minOrders: 200, maxOrders: 249, rates: [{ minPct: 70, maxPct: 77, rate: 400 }, { minPct: 78, maxPct: 85, rate: 500 }, { minPct: 86, rate: 600 }] },
+    { minOrders: 250, maxOrders: 299, rates: [{ minPct: 70, maxPct: 77, rate: 500 }, { minPct: 78, maxPct: 85, rate: 650 }, { minPct: 86, rate: 750 }] },
+    { minOrders: 300, rates: [{ minPct: 70, maxPct: 77, rate: 600 }, { minPct: 78, maxPct: 85, rate: 800 }, { minPct: 86, rate: 1000 }] },
+  ],
   customBonus: {},
   logo: null,
   theme: { primary: '#1a56db' },

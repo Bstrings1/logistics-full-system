@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
-import { fmt, filterPeriod, ot, calcBonus, getBonusCycleOrders, REVENUE_STATUSES, TODAY } from '../utils/helpers';
+import { fmt, filterPeriod, ot, calcBonus, getBonusCycleOrders, getCycleAllOrders, REVENUE_STATUSES, TODAY } from '../utils/helpers';
 import { Av, Badge, SBadge } from '../components/ui';
 import DateFilter from '../components/DateFilter';
 import PriceInput from '../components/PriceInput';
@@ -484,6 +484,8 @@ function MgrRiders({ filterP, fmtC, branch }) {
                 const returns = ords.filter(o => o.status === 'Failed' || o.status === 'Not Delivered').length;
                 const rate = ords.length > 0 ? Math.round((delivered / ords.length) * 100) : 0;
                 const cc = getBonusCycleOrders(name, db).length;
+                const ct = getCycleAllOrders(name, db).length;
+                const cycleRate = ct > 0 ? Math.round((cc / ct) * 100) : 0;
                 return (
                   <tr key={name}>
                     <td><div className="row" style={{ gap: 9 }}><Av name={name} size={26} /><p style={{ fontWeight: 500 }}>{name}</p></div></td>
@@ -498,7 +500,7 @@ function MgrRiders({ filterP, fmtC, branch }) {
                         <span style={{ fontWeight: 700, fontSize: 13, color: rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--amber)' : 'var(--red)', whiteSpace: 'nowrap' }}>{rate}%</span>
                       </div>
                     </td>
-                    <td style={{ fontWeight: 700, color: 'var(--purple)' }}>{fmtC(calcBonus(cc, name, cfg))}</td>
+                    <td style={{ fontWeight: 700, color: 'var(--purple)' }}>{fmtC(calcBonus(cc, cycleRate, name, cfg))}</td>
                   </tr>
                 );
               })}

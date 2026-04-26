@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
-import { fmt, filterPeriod, ot, gp, calcBonus, getBonusCycleOrders, getDups, REVENUE_STATUSES, TODAY } from '../utils/helpers';
+import { fmt, filterPeriod, ot, gp, calcBonus, getBonusCycleOrders, getCycleAllOrders, getDups, REVENUE_STATUSES, TODAY } from '../utils/helpers';
 import { Av, Badge, SBadge } from '../components/ui';
 import DateFilter from '../components/DateFilter';
 import PriceInput from '../components/PriceInput';
@@ -642,6 +642,8 @@ function RiderMyRiders({ filterP, fmtC, branch }) {
             const ords = fo.filter(o => o.rider === name && REVENUE_STATUSES.includes(o.status));
             const val = ords.reduce((s, o) => s + ot(o), 0);
             const cc = getBonusCycleOrders(name, db).length;
+            const ct = getCycleAllOrders(name, db).length;
+            const sr = ct > 0 ? Math.round((cc / ct) * 100) : 0;
             return (
               <div key={name} className="card" style={{ padding: '12px 14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
@@ -659,7 +661,7 @@ function RiderMyRiders({ filterP, fmtC, branch }) {
                   </div>
                   <div style={{ background: 'var(--purple-lt)', borderRadius: 8, padding: '8px 10px' }}>
                     <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--purple)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Bonus</p>
-                    <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--purple)' }}>{fmtC(calcBonus(cc, name, cfg))}</p>
+                    <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--purple)' }}>{fmtC(calcBonus(cc, sr, name, cfg))}</p>
                   </div>
                 </div>
               </div>

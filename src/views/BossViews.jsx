@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
-import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, calcBonus, bonusRate, ot, gp, REVENUE_STATUSES, TODAY } from '../utils/helpers';
-import { SBadge } from '../components/ui';
+import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, getCycleAllOrders, calcBonus, bonusRate, ot, gp, REVENUE_STATUSES, TODAY } from '../utils/helpers';
+import { SBadge, Av } from '../components/ui';
 import DateFilter from '../components/DateFilter';
 
 const CSS = `
@@ -285,6 +285,42 @@ function BossOverview({ filterP, fmtC, cfg, db, setActiveTab }) {
       <div className="pg-body">
         <DateFilter />
 
+        <p className="bv-sec">Branch Performance</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 20 }}>
+          {cfg.branches.map(b => {
+            const total = filterP(db.orders.filter(o => o.branch === b)).length;
+            const delivered = filterP(db.orders.filter(o => o.branch === b && REVENUE_STATUSES.includes(o.status))).length;
+            const pct = total > 0 ? Math.round((delivered / total) * 100) : 0;
+            return (
+              <div key={b} className="bv-rowcard" style={{ padding: '14px 18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <div className={`bv-b-av ${branchColor(cfg.branches, b)}`} style={{ width: 34, height: 34, fontSize: 14 }}>{b[0]}</div>
+                  <div className="bv-b-name">{b}</div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                  <div style={{ background: 'var(--bg,#f6f7fb)', borderRadius: 8, padding: '8px 10px' }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#858cab', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Total Orders</p>
+                    <p style={{ fontSize: 20, fontWeight: 800, color: '#0b1230' }}>{total}</p>
+                  </div>
+                  <div style={{ background: 'var(--bg,#f6f7fb)', borderRadius: 8, padding: '8px 10px' }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, color: '#858cab', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>Delivered</p>
+                    <p style={{ fontSize: 20, fontWeight: 800, color: '#1fa67a' }}>{delivered}</p>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#858cab', textTransform: 'uppercase', letterSpacing: '.06em' }}>Success Rate</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: pct >= 80 ? '#1fa67a' : pct >= 50 ? '#d97706' : '#e0425a' }}>{pct}%</span>
+                  </div>
+                  <div style={{ background: '#e5e7eb', borderRadius: 6, height: 8, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', borderRadius: 6, background: pct >= 80 ? '#1fa67a' : pct >= 50 ? '#d97706' : '#e0425a', transition: 'width .3s' }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         <p className="bv-sec">Remittance Status</p>
         {cfg.branches.map((b) => {
           const c = branchCalc(b, cfg, db, filterP);
@@ -564,7 +600,13 @@ function BossRiders({ fmtC, cfg, db }) {
       <div className="pg-body">
         {cfg.branches.map(b => {
           const riders = db.riders[b] || [];
-          const total = riders.reduce((s, name) => s + calcBonus(getBonusCycleOrders(name, db).length, name, cfg), 0);
+          const branchOrders = db.orders.filter(o => o.branch === b && REVENUE_STATUSES.includes(o.status));
+          const total = riders.reduce((s, name) => {
+            const cd = getBonusCycleOrders(name, db).length;
+            const ct = getCycleAllOrders(name, db).length;
+            const sr = ct > 0 ? Math.round((cd / ct) * 100) : 0;
+            return s + calcBonus(cd, sr, name, cfg);
+          }, 0);
           return (
             <div key={b} className="bv-rowcard" style={{ padding: 0 }}>
               <div className="bv-rowcard-head">
@@ -580,23 +622,36 @@ function BossRiders({ fmtC, cfg, db }) {
               </div>
               {riders.length === 0
                 ? <div className="bv-empty">No riders in this branch</div>
-                : <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none' }}>
-                    <table>
-                      <thead><tr><th>Rider</th><th style={{ textAlign: 'right' }}>Cycle Deliveries</th><th style={{ textAlign: 'right' }}>Rate</th><th style={{ textAlign: 'right' }}>Bonus</th></tr></thead>
-                      <tbody>
-                        {riders.map(name => {
-                          const cc = getBonusCycleOrders(name, db).length;
-                          return (
-                            <tr key={name}>
-                              <td style={{ fontWeight: 600 }}>{name}</td>
-                              <td style={{ textAlign: 'right' }} className="bv-mono">{cc}</td>
-                              <td style={{ textAlign: 'right' }} className="bv-mono">{fmtC(bonusRate(cc, name, cfg))}/order</td>
-                              <td style={{ textAlign: 'right' }}><Money tone="ok">{fmtC(calcBonus(cc, name, cfg))}</Money></td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                : <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {riders.map(name => {
+                      const ords = branchOrders.filter(o => o.rider === name);
+                      const val = ords.reduce((s, o) => s + ot(o), 0);
+                      const cc = getBonusCycleOrders(name, db).length;
+                      const ct = getCycleAllOrders(name, db).length;
+                      const sr = ct > 0 ? Math.round((cc / ct) * 100) : 0;
+                      return (
+                        <div key={name} className="card" style={{ padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                            <Av name={name} size={30} />
+                            <p style={{ fontWeight: 700, fontSize: 14 }}>{name}</p>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                            <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '8px 10px' }}>
+                              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--t4)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Deliveries</p>
+                              <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--navy)' }}>{ords.length}</p>
+                            </div>
+                            <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '8px 10px' }}>
+                              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--t4)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Value</p>
+                              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--navy)' }}>{fmtC(val)}</p>
+                            </div>
+                            <div style={{ background: 'var(--purple-lt)', borderRadius: 8, padding: '8px 10px' }}>
+                              <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--purple)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Bonus</p>
+                              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--purple)' }}>{fmtC(calcBonus(cc, sr, name, cfg))}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
               }
             </div>

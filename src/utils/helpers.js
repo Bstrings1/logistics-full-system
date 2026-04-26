@@ -39,14 +39,18 @@ export function otFull(o) {
   return gp(o).reduce((s, p) => s + (Number(p.price) || 0), 0);
 }
 
-export function bonusRate(n, name, cfg) {
+export function bonusRate(delivered, successRate, name, cfg) {
   if (cfg.customBonus[name] !== undefined) return cfg.customBonus[name];
-  for (const t of cfg.bonusTiers) { if (n <= t.upTo) return t.rate; }
-  return 0;
+  const tier = cfg.bonusTiers.find(t =>
+    delivered >= t.minOrders && (t.maxOrders === undefined ? true : delivered <= t.maxOrders)
+  );
+  if (!tier) return 0;
+  const col = [...tier.rates].reverse().find(r => successRate >= r.minPct);
+  return col ? col.rate : 0;
 }
 
-export function calcBonus(n, name, cfg) {
-  return n * bonusRate(n, name, cfg);
+export function calcBonus(delivered, successRate, name, cfg) {
+  return delivered * bonusRate(delivered, successRate, name, cfg);
 }
 
 export function getBonusCycleOrders(rider, db) {
@@ -56,6 +60,17 @@ export function getBonusCycleOrders(rider, db) {
   const cycleEnd = new Date(cycleStart.getFullYear(), cycleStart.getMonth() + 1, 15);
   return db.orders.filter(o =>
     o.rider === rider && o.status === 'Delivered' &&
+    new Date(o.date) >= cycleStart && new Date(o.date) <= cycleEnd
+  );
+}
+
+export function getCycleAllOrders(rider, db) {
+  const now = new Date();
+  const d = now.getDate();
+  const cycleStart = new Date(now.getFullYear(), now.getMonth() + (d < 14 ? -1 : 0), 14);
+  const cycleEnd = new Date(cycleStart.getFullYear(), cycleStart.getMonth() + 1, 15);
+  return db.orders.filter(o =>
+    o.rider === rider &&
     new Date(o.date) >= cycleStart && new Date(o.date) <= cycleEnd
   );
 }
@@ -168,7 +183,12 @@ export function branchCalc(b, cfg, db, filterP) {
   const shortfall = pays.reduce((s, p) => s + (p.shortfall || 0), 0);
   const ordersVal = fo.reduce((s, o) => s + ot(o), 0);
   const riders = db.riders[b] || [];
-  const bonus = riders.reduce((s, n) => s + calcBonus(getBonusCycleOrders(n, db).length, n, cfg), 0);
+  const bonus = riders.reduce((s, n) => {
+    const cd = getBonusCycleOrders(n, db).length;
+    const ct = getCycleAllOrders(n, db).length;
+    const sr = ct > 0 ? Math.round((cd / ct) * 100) : 0;
+    return s + calcBonus(cd, sr, n, cfg);
+  }, 0);
   const total = filterP(db.orders.filter(o => o.branch === b)).length;
   const delivered = fo.length;
   return { cash, pos, exp, netExpected, sent, stillToSend, shortfall, ordersVal, bonus, riders, total, delivered };
