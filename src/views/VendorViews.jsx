@@ -147,6 +147,7 @@ function VendorDeliveries({ vn, filterP, statusFilter, title }) {
                   <div style={{ minWidth:0, flex:1 }}>
                     <p style={{ fontWeight:700, fontSize:15, marginBottom:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{o.customerName}</p>
                     <p style={{ fontSize:12, color:'var(--t3)' }}>{o.phone || '—'} &nbsp;·&nbsp; {o.date}</p>
+                  {o.failReason && <p style={{ fontSize:12, color:'#dc2626', marginTop:3, fontWeight:500 }}>Reason: {o.failReason}</p>}
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6, flexShrink:0 }}>
                     <span style={{ display:'inline-block', padding:'3px 10px', borderRadius:20, fontSize:12, fontWeight:700, background:statusBg[o.status]||'#f3f4f6', color:statusColor[o.status]||'#374151' }}>{o.status}</span>
