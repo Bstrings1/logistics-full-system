@@ -528,14 +528,40 @@ function RiderUpdate({ filterP, fmtC, branch }) {
             </p>
             <div className="card" style={{ padding: '4px 0' }}>
               {[...filtDelivered, ...filtCompleted, ...filtReplaced].map((o, i, arr) => (
-                <div key={o.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <p style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customerName}</p>
-                    <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider} · {o.phone}</p>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, marginLeft: 8 }}>
-                    <SBadge status={o.status} />
-                    <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--green)', whiteSpace: 'nowrap' }}>{fmtC(ot(o))}</p>
+                <div key={o.id} style={{ padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customerName}</p>
+                      <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider} · {o.phone}</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 8 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
+                        <SBadge status={o.status} />
+                        <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--green)', whiteSpace: 'nowrap' }}>{fmtC(ot(o))}</p>
+                      </div>
+                      {(o.status === 'Delivered' || o.status === 'Completed') && (
+                        <button
+                          style={{ padding: '5px 10px', background: '#fef3c7', color: '#a16207', border: '1.5px solid #fcd34d', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          onClick={() => {
+                            setDb(prev => {
+                              const inv = JSON.parse(JSON.stringify(prev.inventory));
+                              gp(o).forEach(p => {
+                                const qty = Number(p.qty) || 1;
+                                if (!p.vendor || !p.name) return;
+                                if (inv[o.branch]?.[p.vendor]?.[p.name]) {
+                                  inv[o.branch][p.vendor][p.name].delivered = Math.max(0, (inv[o.branch][p.vendor][p.name].delivered || 0) - qty);
+                                }
+                              });
+                              return {
+                                ...prev,
+                                inventory: inv,
+                                orders: prev.orders.map(x => String(x.id) === String(o.id) ? { ...x, status: 'Replaced' } : x),
+                              };
+                            });
+                          }}
+                        >↩ Replaced</button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
