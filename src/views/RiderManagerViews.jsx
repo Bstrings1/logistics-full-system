@@ -368,6 +368,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
   const [completingAmt, setCompletingAmt] = useState('');
   const [failModal, setFailModal] = useState(null);
   const [failReason, setFailReason] = useState('');
+  const [retryPicker, setRetryPicker] = useState(null);
 
   function setStatus(id, status, extra = {}) {
     setDb(prev => ({ ...prev, orders: prev.orders.map(o => String(o.id) === String(id) ? { ...o, status, ...extra } : o) }));
@@ -550,13 +551,20 @@ function RiderUpdate({ filterP, fmtC, branch }) {
             </p>
             <div className="card" style={{ padding: '4px 0' }}>
               {[...filtNotDelivered, ...filtFailed].map((o, i, arr) => (
-                <div key={o.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <p style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customerName}</p>
-                    <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider} · {o.phone}</p>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 8 }}>
-                    <SBadge status={o.status} />
+                <div key={o.id} style={{ padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customerName}</p>
+                      <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider} · {o.phone} · {o.date}</p>
+                      {o.failReason && <p style={{ fontSize: 11, color: 'var(--red)', marginTop: 2 }}>Reason: {o.failReason}</p>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 8 }}>
+                      <SBadge status={o.status} />
+                      <button
+                        style={{ padding: '5px 10px', background: '#f0f9ff', color: '#0369a1', border: '1.5px solid #bae6fd', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        onClick={() => setRetryPicker(o.id)}
+                      >✎ Edit</button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -568,6 +576,28 @@ function RiderUpdate({ filterP, fmtC, branch }) {
           <div className="empty-box"><p className="empty-t">No orders in this period</p></div>
         )}
       </div>
+
+      {retryPicker && (() => {
+        const o = db.orders.find(x => String(x.id) === String(retryPicker));
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 400, boxShadow: '0 12px 40px rgba(0,0,0,.18)' }}>
+              <p style={{ fontWeight: 800, fontSize: 17, marginBottom: 4 }}>Update Order</p>
+              <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>{o?.customerName} · {o?.address}</p>
+              <p style={{ fontSize: 12, background: '#fef3c7', color: '#92400e', borderRadius: 8, padding: '6px 10px', marginBottom: 16 }}>
+                💡 Payment will be recorded for the original date: <strong>{o?.date}</strong>
+              </p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 10 }}>Mark this order as:</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button onClick={() => { setRetryPicker(null); setEditModalStatus('Delivered'); setEditModalOrderId(retryPicker); }} style={{ padding: '11px 14px', background: '#dcfce7', color: '#15803d', border: '1.5px solid #86efac', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>✓ Delivered</button>
+                <button onClick={() => { setRetryPicker(null); setEditModalStatus('Completed'); setEditModalOrderId(retryPicker); }} style={{ padding: '11px 14px', background: '#f0fdfa', color: '#0d9488', border: '1.5px solid #99f6e4', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>⊕ Completed (partial payment)</button>
+                <button onClick={() => { setStatus(retryPicker, 'Replaced'); setRetryPicker(null); }} style={{ padding: '11px 14px', background: '#fef3c7', color: '#a16207', border: '1.5px solid #fcd34d', borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>↩ Replaced</button>
+              </div>
+              <button onClick={() => setRetryPicker(null)} style={{ marginTop: 14, width: '100%', padding: '9px 0', borderRadius: 10, border: '1.5px solid #e5e7eb', background: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {failModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
