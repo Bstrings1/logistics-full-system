@@ -204,8 +204,7 @@ export default function InventoryViews({ tabId }) {
 /* ─── Stock Overview ───────────────────────────────────────── */
 function InvStock({ branch, isAdmin, setActiveTab }) {
   const { cfg, db } = useApp();
-  const [sv, setSv] = useState('');
-  const [sp, setSp] = useState('');
+  const [sq, setSq] = useState('');
   const [selectedBranch, setSelectedBranch] = useState(branch || cfg.branches[0] || 'IDIMU');
   const [period, setPeriod] = useState('all');
   const [rangeFrom, setRangeFrom] = useState('');
@@ -232,10 +231,12 @@ function InvStock({ branch, isAdmin, setActiveTab }) {
   const totalRemaining = totalReceived - totalSentOut - totalDelivered;
 
   const rows = cfg.vendors
-    .filter(v => !sv || v.toLowerCase().includes(sv.toLowerCase()))
     .map(v => {
       const items = branchInv[v] || {};
-      let filt = Object.entries(items).filter(([p]) => !sp || p.toLowerCase().includes(sp.toLowerCase()));
+      const q = sq.toLowerCase();
+      const vendorMatch = !q || v.toLowerCase().includes(q);
+      let filt = Object.entries(items);
+      if (q && !vendorMatch) filt = filt.filter(([p]) => p.toLowerCase().includes(q));
       if (period !== 'all') filt = filt.filter(([p]) => activeProducts.has(`${v}::${p}`));
       return { v, filt };
     })
@@ -328,7 +329,7 @@ function InvStock({ branch, isAdmin, setActiveTab }) {
           <div style={{ fontWeight: 700, fontSize: 15 }}>Inventory</div>
           <div className="inv2-search">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input placeholder="Search products or vendors…" value={sv || sp} onChange={e => { setSv(e.target.value); setSp(e.target.value); }} />
+            <input placeholder="Search products or vendors…" value={sq} onChange={e => setSq(e.target.value)} />
           </div>
         </div>
 
