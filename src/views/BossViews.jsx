@@ -1141,24 +1141,11 @@ function PendingRegistrations() {
 }
 
 function BossTools({ setActiveTab, cfg }) {
-  const [regCount, setRegCount] = useState(null);
-
-  useEffect(() => {
-    supabase.from('pending_registrations').select('id', { count: 'exact', head: true }).eq('status', 'pending')
-      .then(({ count }) => setRegCount(count || 0));
-  }, []);
-
   return (
     <div className="bv">
       <style>{CSS}</style>
       <div className="pg-hd"><p className="pg-title">CEO Tools</p></div>
       <div className="pg-body">
-        {regCount > 0 && (
-          <div style={{ background: '#fff7ed', border: '1.5px solid #fb923c', borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 18 }}>🔔</span>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#c2410c' }}>{regCount} pending account request{regCount !== 1 ? 's' : ''} — see below</p>
-          </div>
-        )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
           <div className="bv-rowcard" style={{ padding: 20, cursor: 'pointer' }} onClick={() => setActiveTab('dfees')}>
             <div style={{ width: 42, height: 42, borderRadius: 11, background: '#fef3c7', border: '1.5px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 14 }}>🏍</div>
@@ -1170,13 +1157,6 @@ function BossTools({ setActiveTab, cfg }) {
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 5 }}>Staff Loans</div>
             <div style={{ fontSize: 12, color: '#5b6385' }}>Track loans and repayments</div>
           </div>
-        </div>
-        <div className="bv-rowcard" style={{ padding: 18, marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#0b1230' }}>Account Requests</div>
-            {regCount !== null && <Pill type={regCount > 0 ? 'a' : 'g'}>{regCount > 0 ? `${regCount} pending` : 'None pending'}</Pill>}
-          </div>
-          <PendingRegistrations />
         </div>
         <div className="bv-rowcard" style={{ padding: 18, background: '#fafbff' }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: '#858cab', marginBottom: 12 }}>Staff Login Credentials</div>
