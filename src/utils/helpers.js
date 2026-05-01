@@ -40,6 +40,7 @@ export function otFull(o) {
 }
 
 export function bonusRate(delivered, successRate, name, cfg) {
+  if (delivered < 200) return 0;
   if (cfg.customBonus[name] !== undefined) return cfg.customBonus[name];
   const tier = cfg.bonusTiers.find(t =>
     delivered >= t.minOrders && (t.maxOrders === undefined ? true : delivered <= t.maxOrders)
