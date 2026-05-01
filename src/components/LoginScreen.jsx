@@ -202,12 +202,8 @@ export default function LoginScreen() {
         <div className="kyne-wrap">
 
           {/* Brand lockup */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-            <KMark size={38} />
-            <span style={{ fontWeight: 800, fontSize: 26, letterSpacing: '-0.8px', color: '#0b1230' }}>{company}</span>
-          </div>
-          <div style={{ fontSize: 12, color: '#858cab', letterSpacing: '0.02em', marginBottom: 14, textAlign: 'center', fontStyle: 'italic' }}>
-            Your E-commerce Logistics Bro.
+          <div style={{ marginBottom: 20 }}>
+            <img src="/kynelogo.jpg" alt="Kyne" style={{ width: 180, borderRadius: 18, display: 'block' }} />
           </div>
 
           {/* Card */}
@@ -306,24 +302,6 @@ export default function LoginScreen() {
   );
 }
 
-function KMark() {
-  return (
-    <div style={{
-      width: 44, height: 44, borderRadius: 12,
-      background: 'linear-gradient(180deg, #3b54ff, #1f2fc4)',
-      display: 'grid', placeItems: 'center',
-      boxShadow: '0 1px 0 rgba(255,255,255,0.3) inset, 0 -6px 12px rgba(11,18,48,0.15) inset, 0 6px 16px -6px rgba(42,62,240,0.55)',
-      flexShrink: 0,
-    }}>
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-        <path d="M6 4.5v15" stroke="#fff" strokeWidth="2.8" strokeLinecap="round"/>
-        <path d="M6 12.2 L17 4.5" stroke="#fff" strokeWidth="2.8" strokeLinecap="round"/>
-        <path d="M9.6 10.8 L17.8 19.5" stroke="#fff" strokeWidth="2.8" strokeLinecap="round"/>
-        <circle cx="17.8" cy="19.5" r="1.6" fill="#fff"/>
-      </svg>
-    </div>
-  );
-}
 
 export function LogoSvg({ size = 16, color = 'white' }) {
   return (
