@@ -267,6 +267,7 @@ function RiderAssign({ filterP, fmtC, branch }) {
         <p className="pg-sub">{unassigned.length} unassigned{dups.size > 0 ? ` · ⚠ ${dups.size} possible duplicates` : ''}</p>
       </div>
       <div className="pg-body">
+        <DateFilter />
         {dups.size > 0 && (
           <div className="fraud-strip mb14">
             <p className="f-title">⚠ Duplicate Orders Detected</p>
