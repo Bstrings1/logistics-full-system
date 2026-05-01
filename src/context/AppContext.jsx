@@ -167,7 +167,7 @@ function rowsToDb({ orders = [], riders = [], payments = [], expenses = [],
     riderExpenses: riderExpenses.map(e => ({ id: e.id, branch: e.branch, rider: e.rider, amount: e.amount, desc: e.description, date: e.date })),
     remittances: remittances.map(r => ({ id: r.id, branch: r.branch, amount: r.amount, txID: r.tx_id, date: r.date, bank: r.bank, account: r.account, verified: r.verified || false, receiptUrl: r.receipt_url || null })),
     deliveryFees: deliveryFeesObj,
-    loans: loans.map(l => ({ id: l.id, branch: l.branch || null, staff: l.staff, amount: l.amount, salary: l.salary, date: l.date, note: l.note || '', repayments: l.repayments || [] })),
+    loans: loans.map(l => ({ id: l.id, branch: l.branch || null, staff: l.staff, amount: l.amount, salary: l.salary, date: l.date, note: l.note || '', repayments: l.repayments || [], status: l.status || 'active', repayMethod: l.repay_method || 'manual', salaryPct: l.salary_pct || 0, installments: l.installments || [] })),
     inventory: inventoryObj,
     vendorPayments: vendorPaymentsObj,
     inventoryHistory: inventoryHistory.map(h => ({
@@ -260,7 +260,7 @@ async function syncChanges(prev, next) {
     const toUpsert = next.loans.filter(l => prevMap.get(l.id) !== JSON.stringify(l));
     if (toUpsert.length) {
       ops.push(supabase.from('loans').upsert(toUpsert.map(l => ({
-        id: l.id, branch: l.branch || null, staff: l.staff, amount: l.amount, salary: l.salary, date: l.date, note: l.note || null, repayments: l.repayments,
+        id: l.id, branch: l.branch || null, staff: l.staff, amount: l.amount, salary: l.salary, date: l.date, note: l.note || null, repayments: l.repayments, status: l.status || 'active', repay_method: l.repayMethod || 'manual', salary_pct: l.salaryPct || 0, installments: l.installments || [],
       }))));
     }
   }

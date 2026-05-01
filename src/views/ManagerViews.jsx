@@ -512,6 +512,19 @@ function MgrRiders({ filterP, fmtC, branch }) {
   );
 }
 
+function genInstallments(loanId, amount, salary, pct, startDate) {
+  const monthly = Math.round(salary * pct / 100);
+  if (!monthly) return [];
+  const count = Math.ceil(amount / monthly);
+  const [yr, mo] = startDate.split('-').map(Number);
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(yr, mo + i, 1);
+    const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const isLast = i === count - 1;
+    return { id: `${loanId}-${i}`, month, amount: isLast ? amount - monthly * (count - 1) : monthly, status: 'pending', paidDate: null };
+  });
+}
+
 function MgrLoans({ fmtC, branch }) {
   const { db, setDb } = useApp();
   const loans = (db.loans || []).filter(l => l.branch === branch);
@@ -528,16 +541,29 @@ function MgrLoans({ fmtC, branch }) {
     return s + Math.max(0, l.amount - paid);
   }, 0);
 
-  const [form, setForm] = useState({ staff: '', amount: '', salary: '', date: TODAY, note: '' });
+  const todayD = new Date();
+  const lastDay = new Date(todayD.getFullYear(), todayD.getMonth() + 1, 0).getDate();
+  const isMonthEnd = todayD.getDate() >= lastDay - 4;
+  const currentMonth = TODAY.slice(0, 7);
+  const pendingThisMonth = active.filter(l =>
+    l.repayMethod === 'salary' && (l.installments || []).some(i => i.month === currentMonth && i.status === 'pending')
+  );
+
+  const [form, setForm] = useState({ staff: '', amount: '', salary: '', date: TODAY, note: '', repayMethod: 'manual', salaryPct: '' });
   const [showForm, setShowForm] = useState(false);
   const [repForm, setRepForm] = useState({});
   const [openLoan, setOpenLoan] = useState(null);
 
   function addLoan() {
     if (!form.staff || !form.amount) return alert('Staff name and amount required');
-    const loan = { id: Date.now(), branch, staff: form.staff, amount: Number(form.amount), salary: Number(form.salary) || 0, date: form.date, note: form.note, repayments: [] };
+    const id = Date.now();
+    const amount = Number(form.amount);
+    const salary = Number(form.salary) || 0;
+    const salaryPct = Number(form.salaryPct) || 0;
+    const installments = form.repayMethod === 'salary' ? genInstallments(id, amount, salary, salaryPct, form.date) : [];
+    const loan = { id, branch, staff: form.staff, amount, salary, date: form.date, note: form.note, repayments: [], repayMethod: form.repayMethod, salaryPct, installments, status: 'active' };
     setDb(d => ({ ...d, loans: [...(d.loans || []), loan] }));
-    setForm({ staff: '', amount: '', salary: '', date: TODAY, note: '' });
+    setForm({ staff: '', amount: '', salary: '', date: TODAY, note: '', repayMethod: 'manual', salaryPct: '' });
     setShowForm(false);
   }
 
@@ -550,10 +576,38 @@ function MgrLoans({ fmtC, branch }) {
     setRepForm(f => ({ ...f, [loanId]: { amount: '', date: TODAY } }));
   }
 
+  function markInstallmentPaid(loanId, instId, instAmount) {
+    setDb(d => ({
+      ...d,
+      loans: (d.loans || []).map(l => {
+        if (l.id !== loanId) return l;
+        const installments = (l.installments || []).map(inst =>
+          inst.id === instId ? { ...inst, status: 'paid', paidDate: TODAY } : inst
+        );
+        const repayments = [...(l.repayments || []), { id: Date.now(), amount: instAmount, date: TODAY }];
+        return { ...l, installments, repayments };
+      }),
+    }));
+  }
+
+  const monthlyAmt = form.repayMethod === 'salary' && form.salary && form.salaryPct
+    ? Math.round(Number(form.salary) * Number(form.salaryPct) / 100) : 0;
+  const totalMonths = monthlyAmt && form.amount ? Math.ceil(Number(form.amount) / monthlyAmt) : 0;
+
   return (
     <>
       <div className="pg-hd"><p className="pg-title">Staff Loans — {branch}</p></div>
       <div className="pg-body">
+        {isMonthEnd && pendingThisMonth.length > 0 && (
+          <div className="card" style={{ background: '#fff7ed', border: '1.5px solid #fb923c', marginBottom: 16 }}>
+            <p style={{ fontWeight: 700, color: '#c2410c', marginBottom: 6 }}>⚠ Month-End Reminder</p>
+            <p style={{ fontSize: 13, color: '#92400e', marginBottom: 6 }}>These salary deductions are due this month:</p>
+            {pendingThisMonth.map(l => {
+              const inst = (l.installments || []).find(i => i.month === currentMonth && i.status === 'pending');
+              return <p key={l.id} style={{ fontSize: 13, fontWeight: 600 }}>{l.staff} — {fmtC(inst?.amount || 0)}</p>;
+            })}
+          </div>
+        )}
         {totalOutstanding > 0 && (
           <div className="card" style={{ background: '#fff7ed', border: '1px solid #fed7aa', marginBottom: 16 }}>
             <p style={{ color: '#c2410c', fontWeight: 700 }}>Total Outstanding: {fmtC(totalOutstanding)}</p>
@@ -571,6 +625,28 @@ function MgrLoans({ fmtC, branch }) {
               <div><label className="lbl">Monthly Salary</label><PriceInput value={form.salary} onChange={v => setForm(f => ({ ...f, salary: v }))} /></div>
               <div><label className="lbl">Date</label><input className="inp" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
               <div style={{ gridColumn: '1/-1' }}><label className="lbl">Note</label><input className="inp" value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} /></div>
+              <div style={{ gridColumn: '1/-1' }}>
+                <label className="lbl">Repayment Method</label>
+                <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
+                  {['manual', 'salary'].map(m => (
+                    <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                      <input type="radio" value={m} checked={form.repayMethod === m} onChange={() => setForm(f => ({ ...f, repayMethod: m }))} />
+                      {m === 'manual' ? 'Manual' : 'Salary Deduction'}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              {form.repayMethod === 'salary' && (
+                <div style={{ gridColumn: '1/-1' }}>
+                  <label className="lbl">% of Salary per Month</label>
+                  <input className="inp" type="number" min="1" max="100" value={form.salaryPct} placeholder="e.g. 25" onChange={e => setForm(f => ({ ...f, salaryPct: e.target.value }))} />
+                  {monthlyAmt > 0 && (
+                    <p style={{ fontSize: 11, color: '#3b9fd4', marginTop: 4, fontWeight: 600 }}>
+                      ≈ {fmtC(monthlyAmt)} / month · {totalMonths} month{totalMonths !== 1 ? 's' : ''} total
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             <button className="btn-primary" style={{ marginTop: 12 }} onClick={addLoan}>Save Loan</button>
           </div>
@@ -583,11 +659,17 @@ function MgrLoans({ fmtC, branch }) {
           const pct = Math.min(100, Math.round((paid / l.amount) * 100));
           const rf = repForm[l.id] || { amount: '', date: TODAY };
           const open = openLoan === l.id;
+          const isSalary = l.repayMethod === 'salary';
+          const dueThisMonth = isSalary && (l.installments || []).some(i => i.month === currentMonth && i.status === 'pending');
           return (
-            <div key={l.id} className="card" style={{ marginBottom: 12 }}>
+            <div key={l.id} className="card" style={{ marginBottom: 12, border: dueThisMonth && isMonthEnd ? '1.5px solid #fb923c' : undefined }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <p style={{ fontWeight: 700 }}>{l.staff}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <p style={{ fontWeight: 700 }}>{l.staff}</p>
+                    {isSalary && <span style={{ fontSize: 10, background: '#e0f2fe', color: '#0369a1', borderRadius: 4, padding: '2px 6px', fontWeight: 600 }}>SALARY {l.salaryPct}%</span>}
+                    {dueThisMonth && isMonthEnd && <span style={{ fontSize: 10, background: '#fff7ed', color: '#c2410c', borderRadius: 4, padding: '2px 6px', fontWeight: 700 }}>⚠ DUE</span>}
+                  </div>
                   <p style={{ fontSize: 12, color: '#888' }}>{l.date}{l.note ? ` • ${l.note}` : ''}</p>
                 </div>
                 <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setOpenLoan(open ? null : l.id)}>{open ? 'Close' : 'Details'}</button>
@@ -603,18 +685,46 @@ function MgrLoans({ fmtC, branch }) {
               </div>
               {open && (
                 <div style={{ marginTop: 10, borderTop: '1px solid #e5e7eb', paddingTop: 10 }}>
-                  <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Repayment History</p>
-                  {(l.repayments || []).length === 0 && <p style={{ color: '#aaa', fontSize: 13 }}>No repayments yet.</p>}
-                  {(l.repayments || []).map(r => (
-                    <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0', borderBottom: '1px solid #f3f4f6' }}>
-                      <span>{r.date}</span><span style={{ fontWeight: 600 }}>{fmtC(r.amount)}</span>
-                    </div>
-                  ))}
-                  <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <PriceInput value={rf.amount} onChange={v => setRepForm(f => ({ ...f, [l.id]: { ...rf, amount: v } }))} style={{ flex: 1 }} />
-                    <input className="inp" type="date" value={rf.date} onChange={e => setRepForm(f => ({ ...f, [l.id]: { ...rf, date: e.target.value } }))} style={{ flex: 1 }} />
-                    <button className="btn-primary" style={{ whiteSpace: 'nowrap' }} onClick={() => logRepayment(l.id)}>Log</button>
-                  </div>
+                  {isSalary ? (
+                    <>
+                      <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Installment Schedule</p>
+                      {(l.installments || []).map(inst => {
+                        const isPaid = inst.status === 'paid';
+                        const isDue = inst.month === currentMonth && !isPaid;
+                        return (
+                          <div key={inst.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', marginBottom: 6, borderRadius: 8, background: isPaid ? '#f0fdf4' : isDue ? '#fff7ed' : '#f8fafc', border: `1px solid ${isPaid ? '#bbf7d0' : isDue ? '#fed7aa' : '#e5e7eb'}` }}>
+                            <div>
+                              <p style={{ fontSize: 13, fontWeight: 600 }}>{inst.month}</p>
+                              {isPaid && <p style={{ fontSize: 11, color: '#16a34a' }}>Paid {inst.paidDate}</p>}
+                              {isDue && <p style={{ fontSize: 11, color: '#c2410c', fontWeight: 600 }}>Due this month</p>}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontWeight: 700, fontSize: 13 }}>{fmtC(inst.amount)}</span>
+                              {isPaid
+                                ? <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 700 }}>✓ Paid</span>
+                                : <button className="btn-primary btn-sm" onClick={() => { if (confirm(`Mark ${inst.month} installment of ${fmtC(inst.amount)} as paid?`)) markInstallmentPaid(l.id, inst.id, inst.amount); }}>Mark Paid</button>
+                              }
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Repayment History</p>
+                      {(l.repayments || []).length === 0 && <p style={{ color: '#aaa', fontSize: 13 }}>No repayments yet.</p>}
+                      {(l.repayments || []).map(r => (
+                        <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0', borderBottom: '1px solid #f3f4f6' }}>
+                          <span>{r.date}</span><span style={{ fontWeight: 600 }}>{fmtC(r.amount)}</span>
+                        </div>
+                      ))}
+                      <div style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <PriceInput value={rf.amount} onChange={v => setRepForm(f => ({ ...f, [l.id]: { ...rf, amount: v } }))} style={{ flex: 1 }} />
+                        <input className="inp" type="date" value={rf.date} onChange={e => setRepForm(f => ({ ...f, [l.id]: { ...rf, date: e.target.value } }))} style={{ flex: 1 }} />
+                        <button className="btn-primary" style={{ whiteSpace: 'nowrap' }} onClick={() => logRepayment(l.id)}>Log</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>

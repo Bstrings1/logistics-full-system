@@ -1118,11 +1118,32 @@ function BossDeliveryFees({ fmtC, cfg, db, setActiveTab }) {
 
 // ─── Staff Loans ──────────────────────────────────────────────────────────────
 
+function genInstallmentsBoss(loanId, amount, salary, pct, startDate) {
+  const monthly = Math.round(salary * pct / 100);
+  if (!monthly) return [];
+  const count = Math.ceil(amount / monthly);
+  const [yr, mo] = startDate.split('-').map(Number);
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(yr, mo + i, 1);
+    const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const isLast = i === count - 1;
+    return { id: `${loanId}-${i}`, month, amount: isLast ? amount - monthly * (count - 1) : monthly, status: 'pending', paidDate: null };
+  });
+}
+
 function BossLoans({ fmtC, db, setActiveTab }) {
   const { setDb } = useApp();
-  const [newLoan, setNewLoan] = useState({ name: '', total: '', salary: '', date: TODAY, note: '' });
+  const [newLoan, setNewLoan] = useState({ name: '', total: '', salary: '', date: TODAY, note: '', repayMethod: 'manual', salaryPct: '' });
   const active = db.loans.filter(l => l.status !== 'cleared');
   const cleared = db.loans.filter(l => l.status === 'cleared');
+
+  const todayD = new Date();
+  const lastDay = new Date(todayD.getFullYear(), todayD.getMonth() + 1, 0).getDate();
+  const isMonthEnd = todayD.getDate() >= lastDay - 4;
+  const currentMonth = TODAY.slice(0, 7);
+  const pendingThisMonth = active.filter(l =>
+    l.repayMethod === 'salary' && (l.installments || []).some(i => i.month === currentMonth && i.status === 'pending')
+  );
   const owed = active.reduce((s, l) => {
     const r = (l.repayments || []).reduce((rs, p) => rs + p.amount, 0);
     return s + Math.max(0, l.total - r);
@@ -1130,11 +1151,17 @@ function BossLoans({ fmtC, db, setActiveTab }) {
 
   function saveLoan() {
     if (!newLoan.name || !newLoan.total) return;
+    const id = Date.now();
+    const total = Number(newLoan.total);
+    const salary = Number(newLoan.salary) || 0;
+    const salaryPct = Number(newLoan.salaryPct) || 0;
+    const installments = newLoan.repayMethod === 'salary'
+      ? genInstallmentsBoss(id, total, salary, salaryPct, newLoan.date) : [];
     setDb(prev => ({
       ...prev,
-      loans: [...prev.loans, { id: Date.now(), ...newLoan, total: Number(newLoan.total), salary: Number(newLoan.salary) || 0, repayments: [], status: 'active' }],
+      loans: [...prev.loans, { id, name: newLoan.name, staff: newLoan.name, total, amount: total, salary, date: newLoan.date, note: newLoan.note, repayments: [], status: 'active', repayMethod: newLoan.repayMethod, salaryPct, installments }],
     }));
-    setNewLoan({ name: '', total: '', salary: '', date: TODAY, note: '' });
+    setNewLoan({ name: '', total: '', salary: '', date: TODAY, note: '', repayMethod: 'manual', salaryPct: '' });
   }
 
   function saveRepay(lid, amount, date) {
@@ -1145,7 +1172,24 @@ function BossLoans({ fmtC, db, setActiveTab }) {
         if (String(l.id) !== String(lid)) return l;
         const repayments = [...(l.repayments || []), { amount: Number(amount), date }];
         const repaid = repayments.reduce((s, r) => s + r.amount, 0);
-        return { ...l, repayments, status: repaid >= l.total ? 'cleared' : 'active' };
+        const lTotal = l.total || l.amount || 0;
+        return { ...l, repayments, status: repaid >= lTotal ? 'cleared' : 'active' };
+      }),
+    }));
+  }
+
+  function markInstPaid(lid, instId, instAmount) {
+    setDb(prev => ({
+      ...prev,
+      loans: prev.loans.map(l => {
+        if (String(l.id) !== String(lid)) return l;
+        const installments = (l.installments || []).map(inst =>
+          inst.id === instId ? { ...inst, status: 'paid', paidDate: TODAY } : inst
+        );
+        const repayments = [...(l.repayments || []), { id: Date.now(), amount: instAmount, date: TODAY }];
+        const repaid = repayments.reduce((s, r) => s + r.amount, 0);
+        const lTotal = l.total || l.amount || 0;
+        return { ...l, installments, repayments, status: repaid >= lTotal ? 'cleared' : 'active' };
       }),
     }));
   }
@@ -1156,6 +1200,17 @@ function BossLoans({ fmtC, db, setActiveTab }) {
       <div className="pg-hd"><p className="pg-title">Staff Loans</p></div>
       <div className="pg-body">
         <button className="bv-btn" style={{ marginBottom: 16 }} onClick={() => setActiveTab('tools')}>← Back</button>
+
+        {isMonthEnd && pendingThisMonth.length > 0 && (
+          <div style={{ background: '#fff7ed', border: '1.5px solid #fb923c', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+            <div style={{ fontWeight: 700, color: '#c2410c', marginBottom: 6 }}>⚠ Month-End Reminder</div>
+            <div style={{ fontSize: 13, color: '#92400e', marginBottom: 6 }}>These salary deductions are due this month:</div>
+            {pendingThisMonth.map(l => {
+              const inst = (l.installments || []).find(i => i.month === currentMonth && i.status === 'pending');
+              return <div key={l.id} style={{ fontSize: 13, fontWeight: 600 }}>{l.name || l.staff} — {fmtC(inst?.amount || 0)}</div>;
+            })}
+          </div>
+        )}
 
         {owed > 0 && (
           <div className="bv-kpi accent" style={{ marginBottom: 16, padding: '20px 22px' }}>
@@ -1172,11 +1227,33 @@ function BossLoans({ fmtC, db, setActiveTab }) {
             <div><label className="bv-lbl">Monthly Salary</label><input className="bv-inp" type="number" value={newLoan.salary} placeholder="0" onChange={e => setNewLoan(l => ({ ...l, salary: e.target.value }))} /></div>
             <div><label className="bv-lbl">Date</label><input className="bv-inp" type="date" value={newLoan.date} onChange={e => setNewLoan(l => ({ ...l, date: e.target.value }))} /></div>
             <div className="span2"><label className="bv-lbl">Note</label><input className="bv-inp" value={newLoan.note} placeholder="Reason..." onChange={e => setNewLoan(l => ({ ...l, note: e.target.value }))} /></div>
+            <div className="span2">
+              <label className="bv-lbl">Repayment Method</label>
+              <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
+                {['manual', 'salary'].map(m => (
+                  <label key={m} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                    <input type="radio" value={m} checked={newLoan.repayMethod === m} onChange={() => setNewLoan(l => ({ ...l, repayMethod: m }))} />
+                    {m === 'manual' ? 'Manual' : 'Salary Deduction'}
+                  </label>
+                ))}
+              </div>
+            </div>
+            {newLoan.repayMethod === 'salary' && (
+              <div className="span2">
+                <label className="bv-lbl">% of Salary per Month</label>
+                <input className="bv-inp" type="number" min="1" max="100" value={newLoan.salaryPct} placeholder="e.g. 25" onChange={e => setNewLoan(l => ({ ...l, salaryPct: e.target.value }))} />
+                {newLoan.salary && newLoan.salaryPct && (() => {
+                  const mo = Math.round(Number(newLoan.salary) * Number(newLoan.salaryPct) / 100);
+                  const cnt = mo ? Math.ceil(Number(newLoan.total) / mo) : 0;
+                  return mo > 0 ? <div style={{ fontSize: 11, color: '#3b9fd4', marginTop: 4, fontWeight: 600 }}>≈ {fmtC(mo)} / month · {cnt} month{cnt !== 1 ? 's' : ''} total</div> : null;
+                })()}
+              </div>
+            )}
           </div>
           <button className="bv-btn primary" onClick={saveLoan}>Add Loan</button>
         </div>
 
-        {active.map(l => <LoanCard key={l.id} loan={l} fmtC={fmtC} onRepay={saveRepay} />)}
+        {active.map(l => <LoanCard key={l.id} loan={l} fmtC={fmtC} onRepay={saveRepay} onMarkInstPaid={markInstPaid} currentMonth={currentMonth} isMonthEnd={isMonthEnd} />)}
 
         {cleared.length > 0 && (
           <>
@@ -1197,38 +1274,74 @@ function BossLoans({ fmtC, db, setActiveTab }) {
   );
 }
 
-function LoanCard({ loan: l, fmtC, onRepay }) {
+function LoanCard({ loan: l, fmtC, onRepay, onMarkInstPaid, currentMonth, isMonthEnd }) {
   const [repayAmt, setRepayAmt] = useState('');
   const [repayDate, setRepayDate] = useState(TODAY);
+  const lTotal = l.total || l.amount || 0;
   const repaid = (l.repayments || []).reduce((s, r) => s + r.amount, 0);
-  const bal = Math.max(0, l.total - repaid);
-  const pct = l.total > 0 ? Math.min(100, Math.round((repaid / l.total) * 100)) : 0;
+  const bal = Math.max(0, lTotal - repaid);
+  const pct = lTotal > 0 ? Math.min(100, Math.round((repaid / lTotal) * 100)) : 0;
+  const isSalary = l.repayMethod === 'salary';
+  const dueThisMonth = isSalary && (l.installments || []).some(i => i.month === currentMonth && i.status === 'pending');
 
   return (
-    <div className="bv-loan" style={{ marginBottom: 10 }}>
+    <div className="bv-loan" style={{ marginBottom: 10, border: dueThisMonth && isMonthEnd ? '1.5px solid #fb923c' : undefined }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>{l.name}</div>
-          <div style={{ fontSize: 11, color: '#858cab' }}>{l.date}{l.note ? ' · ' + l.note : ''}{l.salary ? ' · 50%=' + fmtC(l.salary * .5) : ''}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>{l.name || l.staff}</div>
+            {isSalary && <span style={{ fontSize: 10, background: '#e0f2fe', color: '#0369a1', borderRadius: 4, padding: '2px 6px', fontWeight: 600 }}>SALARY {l.salaryPct}%</span>}
+            {dueThisMonth && isMonthEnd && <span style={{ fontSize: 10, background: '#fff7ed', color: '#c2410c', borderRadius: 4, padding: '2px 6px', fontWeight: 700 }}>⚠ DUE</span>}
+          </div>
+          <div style={{ fontSize: 11, color: '#858cab' }}>{l.date}{l.note ? ' · ' + l.note : ''}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: '#e0425a', fontFamily: "'JetBrains Mono',monospace" }}>{fmtC(bal)}</div>
-          <div style={{ fontSize: 11, color: '#858cab' }}>of {fmtC(l.total)}</div>
+          <div style={{ fontSize: 11, color: '#858cab' }}>of {fmtC(lTotal)}</div>
         </div>
       </div>
       <div className="bv-prog"><div className="bv-prog-fill" style={{ width: `${pct}%` }} /></div>
       <div style={{ fontSize: 11, color: '#858cab', marginBottom: 12 }}>{fmtC(repaid)} repaid · {pct}%</div>
-      {(l.repayments || []).map((r, i) => (
-        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #eef0f7', fontSize: 12 }}>
-          <span style={{ color: '#5b6385' }}>{r.date}</span>
-          <Money tone="ok">+{fmtC(r.amount)}</Money>
-        </div>
-      ))}
-      <div className="bv-form-grid" style={{ marginTop: 14, marginBottom: 10 }}>
-        <div><label className="bv-lbl">Repayment</label><input className="bv-inp" type="number" value={repayAmt} placeholder="0" onChange={e => setRepayAmt(e.target.value)} /></div>
-        <div><label className="bv-lbl">Date</label><input className="bv-inp" type="date" value={repayDate} onChange={e => setRepayDate(e.target.value)} /></div>
-      </div>
-      <button className="bv-btn primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { onRepay(l.id, repayAmt, repayDate); setRepayAmt(''); }}>+ Log Repayment</button>
+
+      {isSalary ? (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#1f2747', marginBottom: 8 }}>Installment Schedule</div>
+          {(l.installments || []).map(inst => {
+            const isPaid = inst.status === 'paid';
+            const isDue = inst.month === currentMonth && !isPaid;
+            return (
+              <div key={inst.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', marginBottom: 6, borderRadius: 8, background: isPaid ? '#f0fdf4' : isDue ? '#fff7ed' : '#f8fafc', border: `1px solid ${isPaid ? '#bbf7d0' : isDue ? '#fed7aa' : '#eef0f7'}` }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{inst.month}</div>
+                  {isPaid && <div style={{ fontSize: 11, color: '#16a34a' }}>Paid {inst.paidDate}</div>}
+                  {isDue && <div style={{ fontSize: 11, color: '#c2410c', fontWeight: 600 }}>Due this month</div>}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 13 }}>{fmtC(inst.amount)}</span>
+                  {isPaid
+                    ? <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 700 }}>✓</span>
+                    : <button className="bv-btn primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => { if (confirm(`Mark ${inst.month} installment of ${fmtC(inst.amount)} as paid?`)) onMarkInstPaid(l.id, inst.id, inst.amount); }}>Mark Paid</button>
+                  }
+                </div>
+              </div>
+            );
+          })}
+        </>
+      ) : (
+        <>
+          {(l.repayments || []).map((r, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #eef0f7', fontSize: 12 }}>
+              <span style={{ color: '#5b6385' }}>{r.date}</span>
+              <Money tone="ok">+{fmtC(r.amount)}</Money>
+            </div>
+          ))}
+          <div className="bv-form-grid" style={{ marginTop: 14, marginBottom: 10 }}>
+            <div><label className="bv-lbl">Repayment</label><input className="bv-inp" type="number" value={repayAmt} placeholder="0" onChange={e => setRepayAmt(e.target.value)} /></div>
+            <div><label className="bv-lbl">Date</label><input className="bv-inp" type="date" value={repayDate} onChange={e => setRepayDate(e.target.value)} /></div>
+          </div>
+          <button className="bv-btn primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { onRepay(l.id, repayAmt, repayDate); setRepayAmt(''); }}>+ Log Repayment</button>
+        </>
+      )}
     </div>
   );
 }
