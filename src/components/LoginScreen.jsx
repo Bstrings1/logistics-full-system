@@ -310,9 +310,13 @@ export default function LoginScreen() {
 function KyneMark({ size = 46 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 46 46" fill="none">
-      <line x1="15" y1="8"  x2="12" y2="38" stroke="#3b9fd4" strokeWidth="5.5" strokeLinecap="round"/>
-      <line x1="12" y1="24" x2="36" y2="8"  stroke="#3b9fd4" strokeWidth="5.5" strokeLinecap="round"/>
-      <line x1="17" y1="23" x2="38" y2="38" stroke="#3b9fd4" strokeWidth="5" strokeLinecap="round" strokeOpacity="0.75"/>
+      {/* Left bar — slightly left-leaning */}
+      <line x1="22" y1="5"  x2="17" y2="41" stroke="#3b9fd4" strokeWidth="4.5" strokeLinecap="round"/>
+      {/* Upper arm — goes upper-right with red dot at tip */}
+      <line x1="20" y1="23" x2="38" y2="5"  stroke="#3b9fd4" strokeWidth="4.5" strokeLinecap="round"/>
+      <circle cx="38" cy="5" r="2.5" fill="#e0403a"/>
+      {/* Lower arm — goes lower-right */}
+      <line x1="21" y1="25" x2="40" y2="41" stroke="#3b9fd4" strokeWidth="4.5" strokeLinecap="round" strokeOpacity="0.8"/>
     </svg>
   );
 }
