@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, getCycleAllOrders, calcBonus, bonusRate, ot, gp, REVENUE_STATUSES, TODAY } from '../utils/helpers';
@@ -1035,12 +1035,86 @@ function BossInventory({ cfg, db }) {
 
 // ─── CEO Tools ────────────────────────────────────────────────────────────────
 
+function PendingRegistrations({ fmtC }) {
+  const [regs, setRegs] = useState([]);
+  const [loadingRegs, setLoadingRegs] = useState(true);
+  const [actionId, setActionId] = useState(null);
+
+  useEffect(() => {
+    supabase.from('pending_registrations').select('*').eq('status', 'pending').order('created_at', { ascending: false })
+      .then(({ data }) => { setRegs(data || []); setLoadingRegs(false); });
+  }, []);
+
+  const ROLE_LABELS = { manager: 'Branch Manager', 'rider-manager': 'Rider Manager', inventory: 'Inventory Manager', 'inventory-admin': 'Inventory Admin', vendor: 'Vendor' };
+
+  async function approve(reg) {
+    if (!confirm(`Approve ${reg.username}@kyneparcel.com as ${ROLE_LABELS[reg.role] || reg.role}?`)) return;
+    setActionId(reg.id);
+    const { error } = await supabase.functions.invoke('approve-user', { body: { registrationId: reg.id } });
+    if (error) { alert('Error: ' + error.message); setActionId(null); return; }
+    setRegs(r => r.filter(x => x.id !== reg.id));
+    setActionId(null);
+    alert(`Approved! Welcome email sent to ${reg.email}`);
+  }
+
+  async function reject(id) {
+    if (!confirm('Reject this request?')) return;
+    await supabase.from('pending_registrations').update({ status: 'rejected' }).eq('id', id);
+    setRegs(r => r.filter(x => x.id !== id));
+  }
+
+  if (loadingRegs) return <div style={{ padding: 16, color: '#858cab', fontSize: 13 }}>Loading requests…</div>;
+  if (regs.length === 0) return (
+    <div style={{ padding: '20px 0', textAlign: 'center', color: '#858cab', fontSize: 13 }}>No pending account requests</div>
+  );
+
+  return (
+    <div className="bv-tw" style={{ marginTop: 8 }}>
+      <table>
+        <thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Branch</th><th>Date</th><th></th></tr></thead>
+        <tbody>
+          {regs.map(r => (
+            <tr key={r.id}>
+              <td style={{ fontWeight: 700 }}>{r.username}<span style={{ color: '#858cab', fontWeight: 400 }}>@kyneparcel.com</span></td>
+              <td className="bv-mono" style={{ fontSize: 12 }}>{r.email}</td>
+              <td><Pill type="blue">{ROLE_LABELS[r.role] || r.role}</Pill></td>
+              <td>{r.branch || r.vendor_name || <span style={{ color: '#858cab' }}>—</span>}</td>
+              <td className="bv-mono" style={{ fontSize: 11 }}>{r.created_at?.slice(0, 10)}</td>
+              <td>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="bv-btn primary" style={{ height: 30, fontSize: 12, padding: '0 12px' }} disabled={actionId === r.id} onClick={() => approve(r)}>
+                    {actionId === r.id ? '…' : 'Approve'}
+                  </button>
+                  <button className="bv-btn" style={{ height: 30, fontSize: 12, padding: '0 10px', color: '#e0425a', borderColor: '#fecaca' }} onClick={() => reject(r.id)}>Reject</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function BossTools({ setActiveTab, cfg }) {
+  const [regCount, setRegCount] = useState(null);
+
+  useEffect(() => {
+    supabase.from('pending_registrations').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+      .then(({ count }) => setRegCount(count || 0));
+  }, []);
+
   return (
     <div className="bv">
       <style>{CSS}</style>
       <div className="pg-hd"><p className="pg-title">CEO Tools</p></div>
       <div className="pg-body">
+        {regCount > 0 && (
+          <div style={{ background: '#fff7ed', border: '1.5px solid #fb923c', borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 18 }}>🔔</span>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#c2410c' }}>{regCount} pending account request{regCount !== 1 ? 's' : ''} — see below</p>
+          </div>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
           <div className="bv-rowcard" style={{ padding: 20, cursor: 'pointer' }} onClick={() => setActiveTab('dfees')}>
             <div style={{ width: 42, height: 42, borderRadius: 11, background: '#fef3c7', border: '1.5px solid #fde68a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 14 }}>🏍</div>
@@ -1052,6 +1126,13 @@ function BossTools({ setActiveTab, cfg }) {
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 5 }}>Staff Loans</div>
             <div style={{ fontSize: 12, color: '#5b6385' }}>Track loans and repayments</div>
           </div>
+        </div>
+        <div className="bv-rowcard" style={{ padding: 18, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0b1230' }}>Account Requests</div>
+            {regCount !== null && <Pill type={regCount > 0 ? 'a' : 'g'}>{regCount > 0 ? `${regCount} pending` : 'None pending'}</Pill>}
+          </div>
+          <PendingRegistrations />
         </div>
         <div className="bv-rowcard" style={{ padding: 18, background: '#fafbff' }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: '#858cab', marginBottom: 12 }}>Staff Login Credentials</div>
