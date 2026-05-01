@@ -330,12 +330,6 @@ export default function LoginScreen() {
                   </button>
                 </form>
 
-                <div style={{ textAlign: 'center', marginTop: 18, paddingTop: 16, borderTop: '1px solid #f0f1f7' }}>
-                  <span style={{ fontSize: 13, color: '#858cab' }}>New to {company}? </span>
-                  <button onClick={() => { setMode('register'); setError(''); }} style={{ background: 'none', border: 'none', fontSize: 13, fontWeight: 700, color: '#2a3ef0', cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Request Access →
-                  </button>
-                </div>
               </>
             ) : regStatus === 'sent' ? (
               <>
