@@ -202,8 +202,12 @@ export default function LoginScreen() {
         <div className="kyne-wrap">
 
           {/* Brand lockup */}
-          <div style={{ marginBottom: 20 }}>
-            <img src="/kynelogo.jpg" alt="Kyne" style={{ width: 180, borderRadius: 18, display: 'block' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+            <KyneMark size={46} />
+            <span style={{ fontWeight: 800, fontSize: 30, letterSpacing: '-1px', color: '#0b1230' }}>{company}</span>
+          </div>
+          <div style={{ fontSize: 12, color: '#858cab', letterSpacing: '0.02em', marginBottom: 14, textAlign: 'center', fontStyle: 'italic' }}>
+            Your E-commerce Logistics Bro.
           </div>
 
           {/* Card */}
@@ -302,6 +306,16 @@ export default function LoginScreen() {
   );
 }
 
+
+function KyneMark({ size = 46 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 46 46" fill="none">
+      <line x1="15" y1="8"  x2="12" y2="38" stroke="#3b9fd4" strokeWidth="5.5" strokeLinecap="round"/>
+      <line x1="12" y1="24" x2="36" y2="8"  stroke="#3b9fd4" strokeWidth="5.5" strokeLinecap="round"/>
+      <line x1="17" y1="23" x2="38" y2="38" stroke="#3b9fd4" strokeWidth="5" strokeLinecap="round" strokeOpacity="0.75"/>
+    </svg>
+  );
+}
 
 export function LogoSvg({ size = 16, color = 'white' }) {
   return (
