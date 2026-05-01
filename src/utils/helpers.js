@@ -144,7 +144,7 @@ export function getTabs(role) {
     { id: 'overview', l: 'Overview' }, { id: 'branches', l: 'Branches & Remittances' }, { id: 'orders', l: 'Orders' },
     { id: 'riders', l: 'Riders' },
     { id: 'vendor-pay', l: 'Vendor Payments' }, { id: 'inventory', l: 'Inventory' },
-    { id: 'expenses', l: 'Expenses' }, { id: 'dfees', l: 'Delivery Fees' }, { id: 'loans', l: 'Staff Loans' }, { id: 'tools', l: 'CEO Tools' },
+    { id: 'expenses', l: 'Expenses' }, { id: 'tools', l: 'CEO Tools' },
   ];
   if (role === 'manager') return [
     { id: 'remittance', l: 'Remittance' }, { id: 'send', l: 'Send to Boss' }, { id: 'expenses', l: 'Expenses' }, { id: 'riders', l: 'Riders' }, { id: 'loans', l: 'Staff Loans' },
