@@ -214,11 +214,14 @@ function MgrSend({ filterP, fmtC, branch }) {
   const b = branch;
   const pays = filterP(Object.values(db.payments).filter(p => p.branch === b));
   const cash = pays.reduce((s, p) => s + (p.cash || 0), 0);
-  const exp = filterP(db.expenses.filter(e => e.branch === b)).reduce((s, e) => s + e.amount, 0);
-  const netToSend = Math.max(0, cash - exp);
+  const branchExps = filterP(db.expenses.filter(e => e.branch === b));
+  const cashExp = branchExps.filter(e => e.source !== 'pos').reduce((s, e) => s + e.amount, 0);
+  const posExp = branchExps.filter(e => e.source === 'pos').reduce((s, e) => s + e.amount, 0);
+  const netToSend = Math.max(0, cash - cashExp);
   const sent = filterP(db.remittances.filter(r => r.branch === b)).reduce((s, r) => s + r.amount, 0);
   const rem = Math.max(0, netToSend - sent);
   const pos = pays.reduce((s, p) => s + (p.pos || 0), 0);
+  const netPos = Math.max(0, pos - posExp);
   const txDate = period === 'range' && rangeFrom ? rangeFrom : TODAY;
 
   // All-time per-date breakdown to show past unremitted days
@@ -226,8 +229,8 @@ function MgrSend({ filterP, fmtC, branch }) {
   const allRems = db.remittances.filter(r => r.branch === b);
   const allSent = allRems.reduce((s, r) => s + r.amount, 0);
   const allCash = allPays.reduce((s, p) => s + (p.cash || 0), 0);
-  const allExp = db.expenses.filter(e => e.branch === b).reduce((s, e) => s + e.amount, 0);
-  const allOutstanding = Math.max(0, allCash - allExp - allSent);
+  const allCashExp = db.expenses.filter(e => e.branch === b && e.source !== 'pos').reduce((s, e) => s + e.amount, 0);
+  const allOutstanding = Math.max(0, allCash - allCashExp - allSent);
   const dateRows = Object.values(
     allPays.reduce((acc, p) => {
       const d = p.date || TODAY;
@@ -236,7 +239,7 @@ function MgrSend({ filterP, fmtC, branch }) {
       return acc;
     }, {})
   ).map(row => {
-    const dayExp = db.expenses.filter(e => e.branch === b && e.date === row.date).reduce((s, e) => s + e.amount, 0);
+    const dayExp = db.expenses.filter(e => e.branch === b && e.date === row.date && e.source !== 'pos').reduce((s, e) => s + e.amount, 0);
     const dayPaid = allRems.filter(r => r.date === row.date).reduce((s, r) => s + r.amount, 0);
     const net = Math.max(0, row.cash - dayExp);
     const owe = Math.max(0, net - dayPaid);
@@ -333,8 +336,12 @@ function MgrSend({ filterP, fmtC, branch }) {
           <div className="mini-grid">
             <div className="mini-card"><p className="mini-l">Still to Send</p><p className="mini-v" style={{ color: rem > 0 ? '#fca5a5' : '#6ee7b7' }}>{rem === 0 && sent > 0 ? '₦0 ✓' : fmtC(rem)}</p></div>
             <div className="mini-card"><p className="mini-l">Cash from Riders</p><p className="mini-v" style={{ color: '#93c5fd' }}>{fmtC(cash)}</p></div>
-            <div className="mini-card"><p className="mini-l">Branch Expenses</p><p className="mini-v" style={{ color: '#fca5a5' }}>−{fmtC(exp)}</p></div>
-            <div className="mini-card"><p className="mini-l">POS (direct to boss)</p><p className="mini-v" style={{ color: '#6ee7b7' }}>{fmtC(pos)}</p></div>
+            <div className="mini-card"><p className="mini-l">Cash Expenses</p><p className="mini-v" style={{ color: '#fca5a5' }}>−{fmtC(cashExp)}</p></div>
+            <div className="mini-card">
+              <p className="mini-l">POS (direct to boss)</p>
+              <p className="mini-v" style={{ color: '#6ee7b7' }}>{fmtC(netPos)}</p>
+              {posExp > 0 && <p style={{ fontSize: 10, color: '#fca5a5', marginTop: 2 }}>−{fmtC(posExp)} expenses</p>}
+            </div>
           </div>
           <div className="bottom-strip">
             <div className="bs-cell"><p className="bs-l">Net to Send</p><p className="bs-v">{fmtC(netToSend)}</p></div>
@@ -402,16 +409,19 @@ function MgrExpenses({ filterP, fmtC, branch }) {
   const b = branch;
   const exps = filterP(db.expenses.filter(e => e.branch === b));
   const total = exps.reduce((s, e) => s + e.amount, 0);
-  const [fields, setFields] = useState({ desc: '', cat: '', amount: '', date: TODAY });
+  const [fields, setFields] = useState({ desc: '', cat: '', amount: '', date: TODAY, source: 'cash' });
 
   function save() {
     if (!fields.desc || !fields.amount) return;
     setDb(prev => ({
       ...prev,
-      expenses: [...prev.expenses, { id: Date.now(), branch: b, desc: fields.desc, cat: fields.cat || 'General', amount: Number(fields.amount), date: fields.date }],
+      expenses: [...prev.expenses, { id: Date.now(), branch: b, desc: fields.desc, cat: fields.cat || 'General', amount: Number(fields.amount), date: fields.date, source: fields.source }],
     }));
-    setFields({ desc: '', cat: '', amount: '', date: TODAY });
+    setFields({ desc: '', cat: '', amount: '', date: TODAY, source: 'cash' });
   }
+
+  const cashTotal = exps.filter(e => e.source !== 'pos').reduce((s, e) => s + e.amount, 0);
+  const posTotal = exps.filter(e => e.source === 'pos').reduce((s, e) => s + e.amount, 0);
 
   return (
     <>
@@ -425,26 +435,41 @@ function MgrExpenses({ filterP, fmtC, branch }) {
             <div><label className="lbl">Category</label><input className="inp" value={fields.cat} onChange={e => setFields(f => ({ ...f, cat: e.target.value }))} placeholder="Fuel, Office..." /></div>
             <div><label className="lbl">Amount</label><PriceInput value={fields.amount} onChange={v => setFields(f => ({ ...f, amount: v }))} /></div>
             <div><label className="lbl">Date</label><input className="inp" type="date" value={fields.date} onChange={e => setFields(f => ({ ...f, date: e.target.value }))} /></div>
+            <div style={{ gridColumn: '1/-1' }}>
+              <label className="lbl">Deduct From</label>
+              <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
+                {[['cash', 'Cash'], ['pos', 'POS']].map(([val, label]) => (
+                  <label key={val} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', padding: '6px 14px', borderRadius: 8, border: `1.5px solid ${fields.source === val ? 'var(--primary)' : 'var(--border)'}`, background: fields.source === val ? '#eff6ff' : '#fff', fontWeight: fields.source === val ? 700 : 400 }}>
+                    <input type="radio" value={val} checked={fields.source === val} onChange={() => setFields(f => ({ ...f, source: val }))} style={{ display: 'none' }} />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <button className="btn btn-primary btn-sm" onClick={save}>Add Expense</button>
         </div>
         <div className="row-b mb12">
-          <p style={{ fontSize: 14, fontWeight: 600 }}>Total</p>
-          <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--red)' }}>{fmtC(total)}</p>
+          <p style={{ fontSize: 14, fontWeight: 600 }}>Total: {fmtC(total)}</p>
+          <div style={{ display: 'flex', gap: 12 }}>
+            {cashTotal > 0 && <span style={{ fontSize: 12, color: 'var(--t3)' }}>Cash: <b style={{ color: 'var(--red)' }}>{fmtC(cashTotal)}</b></span>}
+            {posTotal > 0 && <span style={{ fontSize: 12, color: 'var(--t3)' }}>POS: <b style={{ color: 'var(--red)' }}>{fmtC(posTotal)}</b></span>}
+          </div>
         </div>
         <div className="card">
           <table className="tbl">
-            <thead><tr><th>Description</th><th>Category</th><th>Amount</th><th>Date</th></tr></thead>
+            <thead><tr><th>Description</th><th>Category</th><th>Source</th><th>Amount</th><th>Date</th></tr></thead>
             <tbody>
               {exps.length ? exps.map((e, i) => (
                 <tr key={i}>
                   <td>{e.desc}</td>
                   <td><Badge text={e.cat} type="gray" /></td>
+                  <td><Badge text={e.source === 'pos' ? 'POS' : 'Cash'} type={e.source === 'pos' ? 'green' : 'amber'} /></td>
                   <td style={{ color: 'var(--red)', fontWeight: 600 }}>{fmtC(e.amount)}</td>
                   <td style={{ fontSize: 11, color: 'var(--t4)' }}>{e.date}</td>
                 </tr>
               )) : (
-                <tr><td colSpan={4}><div className="empty-box"><p className="empty-t">No expenses</p></div></td></tr>
+                <tr><td colSpan={5}><div className="empty-box"><p className="empty-t">No expenses</p></div></td></tr>
               )}
             </tbody>
           </table>

@@ -163,7 +163,7 @@ function rowsToDb({ orders = [], riders = [], payments = [], expenses = [],
     })),
     riders: ridersObj,
     payments: paymentsObj,
-    expenses: expenses.map(e => ({ id: e.id, branch: e.branch, desc: e.description, cat: e.cat, amount: e.amount, date: e.date })),
+    expenses: expenses.map(e => ({ id: e.id, branch: e.branch, desc: e.description, cat: e.cat, amount: e.amount, date: e.date, source: e.source || 'cash' })),
     riderExpenses: riderExpenses.map(e => ({ id: e.id, branch: e.branch, rider: e.rider, amount: e.amount, desc: e.description, date: e.date })),
     remittances: remittances.map(r => ({ id: r.id, branch: r.branch, amount: r.amount, txID: r.tx_id, date: r.date, bank: r.bank, account: r.account, verified: r.verified || false, receiptUrl: r.receipt_url || null })),
     deliveryFees: deliveryFeesObj,
@@ -217,7 +217,7 @@ async function syncChanges(prev, next) {
     const toInsert = next.expenses.filter(e => !prevIds.has(e.id));
     if (toInsert.length) {
       ops.push(supabase.from('expenses').insert(toInsert.map(e => ({
-        id: e.id, branch: e.branch, description: e.desc, cat: e.cat, amount: e.amount, date: e.date,
+        id: e.id, branch: e.branch, description: e.desc, cat: e.cat, amount: e.amount, date: e.date, source: e.source || 'cash',
       }))));
     }
   }
