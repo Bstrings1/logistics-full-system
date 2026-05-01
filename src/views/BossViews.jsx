@@ -250,6 +250,7 @@ export default function BossViews({ tabId }) {
   if (tabId === 'riders')      return <BossRiders       fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'vendor-pay')  return <BossVendorPay    filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'inventory')   return <BossInventory    cfg={cfg} db={db} />;
+  if (tabId === 'expenses')    return <BossExpenses     filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'tools')       return <BossTools        setActiveTab={setActiveTab} cfg={cfg} />;
   if (tabId === 'dfees')       return <BossDeliveryFees fmtC={fmtC} cfg={cfg} db={db} setActiveTab={setActiveTab} />;
   if (tabId === 'loans')       return <BossLoans        fmtC={fmtC} db={db} setActiveTab={setActiveTab} />;
@@ -533,6 +534,80 @@ function BossBranches({ filterP, fmtC, cfg, db }) {
         })}
       </div>
       <VerifyModal rem={verifyRem} fmtC={fmtC} onConfirm={confirmVerify} onClose={() => setVerifyRem(null)} />
+    </div>
+  );
+}
+
+// ─── Expenses ─────────────────────────────────────────────────────────────────
+
+function branchPillType(branches, b) {
+  const types = ['blue', 'g', 'a', 'r'];
+  return types[branches.indexOf(b) % types.length] || 'b';
+}
+
+function BossExpenses({ filterP, fmtC, cfg, db }) {
+  const [branch, setBranch] = useState('all');
+
+  const allExps = filterP(db.expenses);
+  const filtered = branch === 'all' ? allExps : allExps.filter(e => e.branch === branch);
+  const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
+
+  const total = filtered.reduce((s, e) => s + e.amount, 0);
+  const cashTotal = filtered.filter(e => e.source !== 'pos').reduce((s, e) => s + e.amount, 0);
+  const posTotal = filtered.filter(e => e.source === 'pos').reduce((s, e) => s + e.amount, 0);
+
+  const byBranch = cfg.branches.reduce((acc, b) => {
+    acc[b] = allExps.filter(e => e.branch === b).reduce((s, e) => s + e.amount, 0);
+    return acc;
+  }, {});
+
+  return (
+    <div className="bv">
+      <style>{CSS}</style>
+      <div className="pg-hd"><p className="pg-title">Branch Expenses</p><p className="pg-sub">All logged expenses across branches</p></div>
+      <div className="pg-body">
+        <DateFilter />
+        <div className="bv-kpis c4" style={{ marginBottom: 16 }}>
+          <div className="bv-kpi accent">
+            <div className="bv-kpi-l">Total</div>
+            <div className="bv-kpi-v bad">{fmtC(total)}</div>
+            <div className="bv-kpi-s">Cash: {fmtC(cashTotal)} · POS: {fmtC(posTotal)}</div>
+          </div>
+          {cfg.branches.map(b => (
+            <div key={b} className="bv-kpi">
+              <div className="bv-kpi-l">{b}</div>
+              <div className="bv-kpi-v bad">{fmtC(byBranch[b] || 0)}</div>
+            </div>
+          ))}
+        </div>
+        <div className="bv-tabs">
+          <button className={`bv-tab${branch === 'all' ? ' on' : ''}`} onClick={() => setBranch('all')}>All</button>
+          {cfg.branches.map(b => (
+            <button key={b} className={`bv-tab${branch === b ? ' on' : ''}`} onClick={() => setBranch(b)}>{b}</button>
+          ))}
+        </div>
+        <div className="bv-tw">
+          <table>
+            <thead>
+              <tr><th>Branch</th><th>Description</th><th>Category</th><th>Source</th><th>Amount</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+              {sorted.length ? sorted.map((e, i) => (
+                <tr key={i}>
+                  <td><Pill type={branchPillType(cfg.branches, e.branch)}>{e.branch}</Pill></td>
+                  <td style={{ fontWeight: 500 }}>{e.desc}</td>
+                  <td><Pill type="b">{e.cat}</Pill></td>
+                  <td><Pill type={e.source === 'pos' ? 'g' : 'a'}>{e.source === 'pos' ? 'POS' : 'Cash'}</Pill></td>
+                  <td><Money tone="bad">{fmtC(e.amount)}</Money></td>
+                  <td className="bv-mono">{e.date}</td>
+                </tr>
+              )) : (
+                <tr><td colSpan={6}><div className="bv-empty">No expenses in this period</div></td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
