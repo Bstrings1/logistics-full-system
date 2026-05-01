@@ -1035,24 +1035,31 @@ function BossInventory({ cfg, db }) {
 
 // ─── CEO Tools ────────────────────────────────────────────────────────────────
 
-function PendingRegistrations({ fmtC }) {
+function PendingRegistrations() {
   const [regs, setRegs] = useState([]);
+  const [approved, setApproved] = useState([]);
   const [loadingRegs, setLoadingRegs] = useState(true);
   const [actionId, setActionId] = useState(null);
 
-  useEffect(() => {
-    supabase.from('pending_registrations').select('*').eq('status', 'pending').order('created_at', { ascending: false })
-      .then(({ data }) => { setRegs(data || []); setLoadingRegs(false); });
-  }, []);
-
   const ROLE_LABELS = { manager: 'Branch Manager', 'rider-manager': 'Rider Manager', inventory: 'Inventory Manager', 'inventory-admin': 'Inventory Admin', vendor: 'Vendor' };
+
+  useEffect(() => {
+    supabase.from('pending_registrations').select('*').order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setRegs((data || []).filter(r => r.status === 'pending'));
+        setApproved((data || []).filter(r => r.status === 'approved'));
+        setLoadingRegs(false);
+      });
+  }, []);
 
   async function approve(reg) {
     if (!confirm(`Approve ${reg.username}@kyneparcel.com as ${ROLE_LABELS[reg.role] || reg.role}?`)) return;
     setActionId(reg.id);
     const { error } = await supabase.functions.invoke('approve-user', { body: { registrationId: reg.id } });
     if (error) { alert('Error: ' + error.message); setActionId(null); return; }
+    const moved = regs.find(r => r.id === reg.id);
     setRegs(r => r.filter(x => x.id !== reg.id));
+    if (moved) setApproved(a => [{ ...moved, status: 'approved' }, ...a]);
     setActionId(null);
     alert(`Approved! Welcome email sent to ${reg.email}`);
   }
@@ -1063,36 +1070,73 @@ function PendingRegistrations({ fmtC }) {
     setRegs(r => r.filter(x => x.id !== id));
   }
 
-  if (loadingRegs) return <div style={{ padding: 16, color: '#858cab', fontSize: 13 }}>Loading requests…</div>;
-  if (regs.length === 0) return (
-    <div style={{ padding: '20px 0', textAlign: 'center', color: '#858cab', fontSize: 13 }}>No pending account requests</div>
-  );
+  async function resend(reg) {
+    setActionId(reg.id);
+    const { error } = await supabase.functions.invoke('resend-password-link', {
+      body: { kyneEmail: `${reg.username}@kyneparcel.com`, personalEmail: reg.email, username: reg.username },
+    });
+    setActionId(null);
+    if (error) { alert('Error: ' + error.message); return; }
+    alert(`New password link sent to ${reg.email}`);
+  }
+
+  if (loadingRegs) return <div style={{ padding: 16, color: '#858cab', fontSize: 13 }}>Loading…</div>;
 
   return (
-    <div className="bv-tw" style={{ marginTop: 8 }}>
-      <table>
-        <thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Branch</th><th>Date</th><th></th></tr></thead>
-        <tbody>
-          {regs.map(r => (
-            <tr key={r.id}>
-              <td style={{ fontWeight: 700 }}>{r.username}<span style={{ color: '#858cab', fontWeight: 400 }}>@kyneparcel.com</span></td>
-              <td className="bv-mono" style={{ fontSize: 12 }}>{r.email}</td>
-              <td><Pill type="blue">{ROLE_LABELS[r.role] || r.role}</Pill></td>
-              <td>{r.branch || r.vendor_name || <span style={{ color: '#858cab' }}>—</span>}</td>
-              <td className="bv-mono" style={{ fontSize: 11 }}>{r.created_at?.slice(0, 10)}</td>
-              <td>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button className="bv-btn primary" style={{ height: 30, fontSize: 12, padding: '0 12px' }} disabled={actionId === r.id} onClick={() => approve(r)}>
-                    {actionId === r.id ? '…' : 'Approve'}
-                  </button>
-                  <button className="bv-btn" style={{ height: 30, fontSize: 12, padding: '0 10px', color: '#e0425a', borderColor: '#fecaca' }} onClick={() => reject(r.id)}>Reject</button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {regs.length === 0
+        ? <div style={{ padding: '12px 0', textAlign: 'center', color: '#858cab', fontSize: 13 }}>No pending requests</div>
+        : (
+          <div className="bv-tw" style={{ marginTop: 8 }}>
+            <table>
+              <thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Branch</th><th>Date</th><th></th></tr></thead>
+              <tbody>
+                {regs.map(r => (
+                  <tr key={r.id}>
+                    <td style={{ fontWeight: 700 }}>{r.username}<span style={{ color: '#858cab', fontWeight: 400 }}>@kyneparcel.com</span></td>
+                    <td className="bv-mono" style={{ fontSize: 12 }}>{r.email}</td>
+                    <td><Pill type="blue">{ROLE_LABELS[r.role] || r.role}</Pill></td>
+                    <td>{r.branch || r.vendor_name || <span style={{ color: '#858cab' }}>—</span>}</td>
+                    <td className="bv-mono" style={{ fontSize: 11 }}>{r.created_at?.slice(0, 10)}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="bv-btn primary" style={{ height: 30, fontSize: 12, padding: '0 12px' }} disabled={actionId === r.id} onClick={() => approve(r)}>{actionId === r.id ? '…' : 'Approve'}</button>
+                        <button className="bv-btn" style={{ height: 30, fontSize: 12, padding: '0 10px', color: '#e0425a', borderColor: '#fecaca' }} onClick={() => reject(r.id)}>Reject</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
+      {approved.length > 0 && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#858cab', letterSpacing: '.1em', textTransform: 'uppercase', marginTop: 18, marginBottom: 8 }}>Approved Accounts</div>
+          <div className="bv-tw">
+            <table>
+              <thead><tr><th>Kyne Email</th><th>Personal Email</th><th>Role</th><th>Date</th><th></th></tr></thead>
+              <tbody>
+                {approved.map(r => (
+                  <tr key={r.id}>
+                    <td style={{ fontWeight: 700 }}>{r.username}@kyneparcel.com</td>
+                    <td className="bv-mono" style={{ fontSize: 12 }}>{r.email}</td>
+                    <td><Pill type="g">{ROLE_LABELS[r.role] || r.role}</Pill></td>
+                    <td className="bv-mono" style={{ fontSize: 11 }}>{r.created_at?.slice(0, 10)}</td>
+                    <td>
+                      <button className="bv-btn amber" style={{ height: 30, fontSize: 12, padding: '0 12px' }} disabled={actionId === r.id} onClick={() => resend(r)}>
+                        {actionId === r.id ? '…' : 'Resend Link'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
   );
 }
 
