@@ -348,3 +348,10 @@ label.lbl{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bo
   .g4{grid-template-columns:1fr}
   .login-card{padding:20px 16px}
 }
+
+/* ── ADMIN PANEL ── */
+.ap-cred-row{display:flex;gap:16px;align-items:center}
+@media (max-width: 767px) {
+  .ap-cred-row{flex-direction:column;gap:8px;align-items:stretch}
+  .ap-cred-row > div{flex:unset !important}
+}

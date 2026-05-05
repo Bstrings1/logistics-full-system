@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
-import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, getCycleAllOrders, calcBonus, bonusRate, ot, gp, REVENUE_STATUSES, TODAY } from '../utils/helpers';
+import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, getCycleAllOrders, calcBonus, bonusRate, ot, gp, REVENUE_STATUSES, TODAY, resolveVendors } from '../utils/helpers';
 import { SBadge, Av } from '../components/ui';
 import DateFilter from '../components/DateFilter';
 
@@ -745,13 +745,14 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
   const [saving, setSaving] = useState(false);
 
   function vendorCalc(vn) {
-    const vOrds = filterP(db.orders.filter(o => gp(o).some(p => p.vendor === vn) && (REVENUE_STATUSES.includes(o.status) || o.status === 'Failed' || o.status === 'Replaced')));
+    const vnList = resolveVendors(vn, cfg);
+    const vOrds = filterP(db.orders.filter(o => gp(o).some(p => vnList.includes(p.vendor)) && (REVENUE_STATUSES.includes(o.status) || o.status === 'Failed' || o.status === 'Replaced')));
     const del = vOrds.filter(o => REVENUE_STATUSES.includes(o.status));
-    function vt(o) { return gp(o).filter(p => p.vendor === vn).reduce((s, p) => s + (Number(p.price) || 0), 0); }
+    function vt(o) { return gp(o).filter(p => vnList.includes(p.vendor)).reduce((s, p) => s + (Number(p.price) || 0), 0); }
     const totalVal = del.reduce((s, o) => s + vt(o), 0);
     const fees = vOrds.reduce((s, o) => s + (db.deliveryFees[o.id] || 0), 0);
     const net = Math.max(0, totalVal - fees);
-    const paid = (db.vendorPayments[vn] || []).reduce((s, p) => s + p.amount, 0);
+    const paid = vnList.flatMap(v => db.vendorPayments[v] || []).reduce((s, p) => s + p.amount, 0);
     const remaining = Math.max(0, net - paid);
     return { totalVal, fees, net, paid, remaining };
   }
@@ -778,11 +779,16 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
   }
 
   const c = vpSelected ? vendorCalc(vpSelected) : null;
-  const payments = vpSelected ? (db.vendorPayments[vpSelected] || []) : [];
+  const vpList = vpSelected ? resolveVendors(vpSelected, cfg) : [];
+  const payments = vpSelected ? vpList.flatMap(v => db.vendorPayments[v] || []).sort((a, b) => (b.date||'').localeCompare(a.date||'')) : [];
   const payStatus = c ? (c.remaining <= 0 && c.paid > 0 ? 'paid' : c.paid > 0 ? 'partial' : 'unpaid') : 'unpaid';
 
+  // Only show top-level vendors (not sub-vendors) in the summary + selector
+  const subVendors = new Set(Object.values(cfg.vendorGroups || {}).flat());
+  const topVendors = cfg.vendors.filter(v => !subVendors.has(v));
+
   // All-vendors summary table
-  const allRows = cfg.vendors.map(v => {
+  const allRows = topVendors.map(v => {
     const vc = vendorCalc(v);
     const st = vc.remaining <= 0 && vc.paid > 0 ? 'paid' : vc.paid > 0 ? 'partial' : 'unpaid';
     return { v, ...vc, st };
@@ -810,7 +816,7 @@ function BossVendorPay({ filterP, fmtC, cfg, db }) {
           <label className="bv-lbl">Select Vendor</label>
           <select className={`bv-inp bv-sel`} value={vpSelected || ''} onChange={e => setVpSelected(e.target.value)} style={{ maxWidth: 320 }}>
             <option value="">— Choose vendor —</option>
-            {cfg.vendors.map(v => <option key={v} value={v}>{v}</option>)}
+            {topVendors.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
         </div>
 

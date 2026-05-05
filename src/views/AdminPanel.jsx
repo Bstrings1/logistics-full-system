@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { gp, fmt, otFull, statusBadgeType, buildUsers, getTabs } from '../utils/helpers';
 import { SBadge } from '../components/ui';
@@ -33,34 +33,81 @@ const TABS = [
 export default function AdminPanel() {
   const { cfg, setCfg, db, setDb, setSession, setViewAs, setActiveTab } = useApp();
   const [tab, setTab] = useState('viewas');
+  const [navOpen, setNavOpen] = useState(false);
+  const [mobile, setMobile] = useState(() => window.innerWidth < 768);
+  const currentLabel = TABS.find(t => t.id === tab)?.label || '';
+
+  useEffect(() => {
+    const fn = () => setMobile(window.innerWidth < 768);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+
+  function selectTab(id) { setTab(id); setNavOpen(false); }
+
+  const primary = cfg.theme?.primary || '#635bff';
+
+  const navStyle = mobile
+    ? {
+        position: 'fixed', top: 52, left: 0, bottom: 0, zIndex: 200,
+        width: 240, background: 'white',
+        borderRight: '1.5px solid var(--border)', padding: '16px 10px',
+        overflowY: 'auto', boxShadow: '4px 0 24px rgba(0,0,0,.18)',
+        transform: navOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform .24s cubic-bezier(.4,0,.2,1)',
+      }
+    : {
+        width: 210, flexShrink: 0, background: 'white',
+        borderRight: '1.5px solid var(--border)', padding: '16px 10px',
+      };
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <div style={{ background: '#0f172a', color: 'white', padding: '0 24px', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <div style={{ width: 28, height: 28, background: cfg.theme?.primary || '#635bff', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: 'white' }}>A</div>
-          <span style={{ fontWeight: 700, fontSize: 14 }}>Super Admin</span>
-          <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>· {cfg.company}</span>
+      {/* Sticky top bar */}
+      <div style={{ background: '#0f172a', color: 'white', padding: '0 16px', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 300 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', minWidth: 0 }}>
+          {mobile && (
+            <button
+              onClick={() => setNavOpen(o => !o)}
+              style={{ background: 'rgba(255,255,255,.13)', border: 'none', color: 'white', borderRadius: 7, width: 34, height: 34, fontSize: 17, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            >
+              ☰
+            </button>
+          )}
+          <div style={{ width: 28, height: 28, background: primary, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: 'white', flexShrink: 0 }}>A</div>
+          <span style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>Super Admin</span>
+          {mobile
+            ? <span style={{ fontSize: 12, color: 'rgba(255,255,255,.5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>· {currentLabel}</span>
+            : <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>· {cfg.company}</span>
+          }
         </div>
         <button
           onClick={() => setSession(null)}
-          style={{ background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', color: 'white', borderRadius: 7, padding: '5px 14px', fontSize: 12, cursor: 'pointer' }}
+          style={{ background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.2)', color: 'white', borderRadius: 7, padding: '5px 14px', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}
         >
           Sign out
         </button>
       </div>
 
+      {/* Mobile overlay */}
+      {mobile && navOpen && (
+        <div
+          onClick={() => setNavOpen(false)}
+          style={{ position: 'fixed', inset: 0, top: 52, background: 'rgba(0,0,0,.45)', zIndex: 199 }}
+        />
+      )}
+
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 52px)' }}>
-        <nav style={{ width: 210, borderRight: '1.5px solid var(--border)', padding: '16px 10px', background: 'white', flexShrink: 0 }}>
+        <nav style={navStyle}>
           {TABS.map(t => (
             <button
               key={t.id}
-              onClick={() => setTab(t.id)}
+              onClick={() => selectTab(t.id)}
               style={{
                 display: 'block', width: '100%', textAlign: 'left',
                 padding: '9px 12px', borderRadius: 8, border: 'none',
-                background: tab === t.id ? `${cfg.theme?.primary || '#635bff'}18` : 'none',
-                color: tab === t.id ? (cfg.theme?.primary || '#635bff') : 'var(--t2)',
+                background: tab === t.id ? `${primary}18` : 'none',
+                color: tab === t.id ? primary : 'var(--t2)',
                 fontWeight: tab === t.id ? 700 : 400,
                 fontSize: 13, cursor: 'pointer', marginBottom: 2,
               }}
@@ -70,7 +117,7 @@ export default function AdminPanel() {
           ))}
         </nav>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: 32, maxHeight: 'calc(100vh - 52px)' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: mobile ? 16 : 32, maxHeight: 'calc(100vh - 52px)', minWidth: 0 }}>
           {tab === 'viewas'      && <ViewAsSection cfg={cfg} setViewAs={setViewAs} setActiveTab={setActiveTab} />}
           {tab === 'orders'      && <OrdersSection       cfg={cfg} db={db} setDb={setDb} />}
           {tab === 'payments'    && <PaymentsSection    cfg={cfg} db={db} setDb={setDb} />}
@@ -351,13 +398,32 @@ function RidersSection({ cfg, db, setDb }) {
 
 function VendorsSection({ cfg, setCfg }) {
   const [vendors, setVendors] = useState([...cfg.vendors]);
+  const [vendorGroups, setVendorGroups] = useState({ ...(cfg.vendorGroups || {}) });
   const [newVal, setNewVal] = useState('');
+  const [newGroupParent, setNewGroupParent] = useState('');
   const [saved, setSaved] = useState(false);
 
   function save() {
-    setCfg(prev => ({ ...prev, vendors }));
+    setCfg(prev => ({ ...prev, vendors, vendorGroups }));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  }
+
+  function toggleMember(groupName, member) {
+    setVendorGroups(prev => {
+      const members = prev[groupName] || [];
+      return { ...prev, [groupName]: members.includes(member) ? members.filter(m => m !== member) : [...members, member] };
+    });
+  }
+
+  function addGroup() {
+    if (!newGroupParent || vendorGroups[newGroupParent] !== undefined) return;
+    setVendorGroups(prev => ({ ...prev, [newGroupParent]: [] }));
+    setNewGroupParent('');
+  }
+
+  function removeGroup(g) {
+    setVendorGroups(prev => { const n = { ...prev }; delete n[g]; return n; });
   }
 
   return (
@@ -377,6 +443,42 @@ function VendorsSection({ cfg, setCfg }) {
           <button className="btn btn-outline btn-sm" onClick={() => { if (newVal.trim()) { setVendors([...vendors, newVal.trim()]); setNewVal(''); } }}>Add</button>
         </div>
       </div>
+
+      <div className="card mb20">
+        <p className="cfg-sec">Vendor Groups</p>
+        <p style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 14 }}>Group brands under a parent vendor. The parent's portal and payments will show combined data from all members.</p>
+
+        {Object.entries(vendorGroups).map(([group, members]) => (
+          <div key={group} style={{ border: '1.5px solid var(--border)', borderRadius: 10, padding: '12px 14px', marginBottom: 10 }}>
+            <div className="row-b mb10">
+              <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--purple)' }}>{group} <span style={{ color: 'var(--t4)', fontWeight: 400 }}>({members.length} sub-vendor{members.length !== 1 ? 's' : ''})</span></span>
+              <button className="btn btn-red-soft btn-xs" onClick={() => removeGroup(group)}>Remove</button>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {vendors.filter(v => v !== group).map(v => (
+                <button key={v} onClick={() => toggleMember(group, v)} style={{
+                  padding: '4px 12px', borderRadius: 99, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  border: '1.5px solid', transition: 'all .12s',
+                  background: members.includes(v) ? 'var(--purple)' : 'white',
+                  color: members.includes(v) ? 'white' : 'var(--t2)',
+                  borderColor: members.includes(v) ? 'var(--purple)' : 'var(--border)',
+                }}>
+                  {members.includes(v) ? '✓ ' : ''}{v}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <div className="row" style={{ gap: 8, marginTop: 8 }}>
+          <select className="inp" value={newGroupParent} onChange={e => setNewGroupParent(e.target.value)} style={{ flex: 1 }}>
+            <option value="">— Select parent vendor —</option>
+            {vendors.filter(v => !vendorGroups[v]).map(v => <option key={v}>{v}</option>)}
+          </select>
+          <button className="btn btn-outline btn-sm" onClick={addGroup} disabled={!newGroupParent}>Create Group</button>
+        </div>
+      </div>
+
       <SaveBtn onClick={save} saved={saved} />
     </div>
   );
@@ -491,7 +593,7 @@ function CredentialsSection({ cfg, setCfg }) {
 
       <div className="card mb16">
         <p className="cfg-sec">Boss / CEO</p>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+        <div className="ap-cred-row">
           <div style={{ flex: 1 }}>
             <label className="lbl">Username (fixed)</label>
             <input className="inp" value="boss" disabled style={{ opacity: 0.45 }} />
@@ -515,7 +617,7 @@ function CredentialsSection({ cfg, setCfg }) {
             <p className="cfg-sec">{branch}</p>
             <div className="col" style={{ gap: 10 }}>
               {roles.map(({ key, username, label }) => (
-                <div key={key} style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <div key={key} className="ap-cred-row">
                   <div style={{ flex: 1 }}>
                     <label className="lbl">{label} — username</label>
                     <input className="inp" value={username} disabled style={{ opacity: 0.45, fontFamily: 'monospace', fontSize: 12 }} />
@@ -538,7 +640,7 @@ function CredentialsSection({ cfg, setCfg }) {
             const vl = vendor.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
             const key = `vendor-${vendor}`;
             return (
-              <div key={key} style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+              <div key={key} className="ap-cred-row">
                 <div style={{ flex: 1 }}>
                   <label className="lbl">{vendor} — username</label>
                   <input className="inp" value={`vendor_${vl}`} disabled style={{ opacity: 0.45, fontFamily: 'monospace', fontSize: 12 }} />
@@ -555,7 +657,7 @@ function CredentialsSection({ cfg, setCfg }) {
 
       <div className="card mb20">
         <p className="cfg-sec">Inventory Admin</p>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+        <div className="ap-cred-row">
           <div style={{ flex: 1 }}>
             <label className="lbl">Username (fixed)</label>
             <input className="inp" value="inv_admin" disabled style={{ opacity: 0.45, fontFamily: 'monospace', fontSize: 12 }} />
@@ -604,50 +706,54 @@ function BonusSection({ cfg, setCfg, db }) {
 
       <div className="card mb16">
         <p className="cfg-sec">Standard Tiers</p>
-        <table className="tbl">
-          <thead><tr><th>Max Orders</th><th>Rate per delivery (₦)</th></tr></thead>
-          <tbody>
-            {tiers.map((t, i) => (
-              <tr key={i}>
-                <td style={{ color: 'var(--t3)', fontSize: 13 }}>{t.upTo === Infinity ? '∞ (top tier)' : `≤ ${t.upTo}`}</td>
-                <td>
-                  <input
-                    type="number"
-                    className="inp"
-                    style={{ maxWidth: 120 }}
-                    value={t.rate}
-                    onChange={e => setTiers(prev => prev.map((ti, j) => j === i ? { ...ti, rate: Number(e.target.value) } : ti))}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="tbl-wrap">
+          <table className="tbl">
+            <thead><tr><th>Max Orders</th><th>Rate per delivery (₦)</th></tr></thead>
+            <tbody>
+              {tiers.map((t, i) => (
+                <tr key={i}>
+                  <td style={{ color: 'var(--t3)', fontSize: 13 }}>{t.upTo === Infinity ? '∞ (top tier)' : `≤ ${t.upTo}`}</td>
+                  <td>
+                    <input
+                      type="number"
+                      className="inp"
+                      style={{ maxWidth: 120 }}
+                      value={t.rate}
+                      onChange={e => setTiers(prev => prev.map((ti, j) => j === i ? { ...ti, rate: Number(e.target.value) } : ti))}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="card mb20">
         <p className="cfg-sec">Custom Bonus per Rider</p>
         {Object.entries(customBonus).length > 0 && (
-          <table className="tbl mb12">
-            <thead><tr><th>Rider</th><th>Rate (₦/delivery)</th><th></th></tr></thead>
-            <tbody>
-              {Object.entries(customBonus).map(([rider, rate]) => (
-                <tr key={rider}>
-                  <td>{rider}</td>
-                  <td>
-                    <input
-                      type="number"
-                      className="inp"
-                      style={{ maxWidth: 100 }}
-                      value={rate}
-                      onChange={e => setCustomBonus(prev => ({ ...prev, [rider]: Number(e.target.value) }))}
-                    />
-                  </td>
-                  <td><button className="btn btn-red-soft btn-xs" onClick={() => removeCustom(rider)}>×</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="tbl-wrap mb12">
+            <table className="tbl">
+              <thead><tr><th>Rider</th><th>Rate (₦/delivery)</th><th></th></tr></thead>
+              <tbody>
+                {Object.entries(customBonus).map(([rider, rate]) => (
+                  <tr key={rider}>
+                    <td>{rider}</td>
+                    <td>
+                      <input
+                        type="number"
+                        className="inp"
+                        style={{ maxWidth: 100 }}
+                        value={rate}
+                        onChange={e => setCustomBonus(prev => ({ ...prev, [rider]: Number(e.target.value) }))}
+                      />
+                    </td>
+                    <td><button className="btn btn-red-soft btn-xs" onClick={() => removeCustom(rider)}>×</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
         <div className="g3">
           <div>
@@ -1085,6 +1191,7 @@ function AdminInventorySection({ cfg, db, setDb }) {
         </div>
       </div>
       <div className="card mb12">
+        <div className="tbl-wrap">
         <table className="tbl">
           <thead><tr><th>Product</th><th>Received</th><th>Sent Out</th><th>Delivered</th><th>Remaining</th><th></th></tr></thead>
           <tbody>
@@ -1124,6 +1231,7 @@ function AdminInventorySection({ cfg, db, setDb }) {
             )}
           </tbody>
         </table>
+        </div>
       </div>
       <div className="row" style={{ gap: 8 }}>
         <select className="inp" value={newProd} onChange={e => setNewProd(e.target.value)} style={{ flex: 1 }}>
@@ -1237,6 +1345,15 @@ function ViewAsSection({ cfg, setViewAs, setActiveTab }) {
     branches: cfg.branches.map(b => users.filter(u => u.branch === b)),
     vendors: users.filter(u => u.role === 'vendor'),
   };
+  const [open, setOpen] = useState(new Set(['global']));
+
+  function toggle(key) {
+    setOpen(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
 
   function go(user) {
     const tabs = getTabs(user.role);
@@ -1247,7 +1364,7 @@ function ViewAsSection({ cfg, setViewAs, setActiveTab }) {
   function RoleCard({ user }) {
     const m = ROLE_META[user.role] || ROLE_META.manager;
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--border)', marginBottom: 8, background: 'white' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderRadius: 10, border: '1.5px solid var(--border)', marginBottom: 8, background: 'var(--bg)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 34, height: 34, borderRadius: 8, background: m.bg, color: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 15 }}>{m.icon}</div>
           <div>
@@ -1257,35 +1374,55 @@ function ViewAsSection({ cfg, setViewAs, setActiveTab }) {
         </div>
         <button
           onClick={() => go(user)}
-          style={{ background: 'var(--purple)', color: 'white', border: 'none', borderRadius: 7, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+          style={{ background: 'var(--purple)', color: 'white', border: 'none', borderRadius: 7, padding: '6px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
         >
-          View As →
+          View →
         </button>
+      </div>
+    );
+  }
+
+  function AccordionBlock({ id, label, count, children }) {
+    const isOpen = open.has(id);
+    return (
+      <div className="card mb10">
+        <button
+          onClick={() => toggle(id)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--navy)' }}>{label}</span>
+            <span style={{ fontSize: 11, background: 'var(--purple-lt)', color: 'var(--purple)', padding: '2px 8px', borderRadius: 99, fontWeight: 700 }}>{count}</span>
+          </div>
+          <span style={{ fontSize: 12, color: 'var(--t3)', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .2s', display: 'inline-block' }}>▼</span>
+        </button>
+        {isOpen && (
+          <div style={{ marginTop: 14 }}>
+            {children}
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div style={{ maxWidth: 580 }}>
-      <SectionTitle title="View As Role" sub="See exactly what each user sees — and fix things on the spot. A banner lets you exit back to admin." />
+      <SectionTitle title="View As Role" sub="Tap a section to expand it, then press View to enter that portal." />
 
-      <div className="card mb20">
-        <p className="cfg-sec">Global Roles</p>
+      <AccordionBlock id="global" label="Global Roles" count={grouped.special.length}>
         {grouped.special.map(u => <RoleCard key={u.username} user={u} />)}
-      </div>
+      </AccordionBlock>
 
       {cfg.branches.map((b, i) => (
-        <div key={b} className="card mb16">
-          <p className="cfg-sec">{b}</p>
+        <AccordionBlock key={b} id={b} label={b} count={grouped.branches[i].length}>
           {grouped.branches[i].map(u => <RoleCard key={u.username} user={u} />)}
-        </div>
+        </AccordionBlock>
       ))}
 
       {grouped.vendors.length > 0 && (
-        <div className="card mb16">
-          <p className="cfg-sec">Vendors</p>
+        <AccordionBlock id="vendors" label="Vendors" count={grouped.vendors.length}>
           {grouped.vendors.map(u => <RoleCard key={u.username} user={u} />)}
-        </div>
+        </AccordionBlock>
       )}
     </div>
   );

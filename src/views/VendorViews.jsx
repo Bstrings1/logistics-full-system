@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import html2canvas from 'html2canvas';
 import { useApp } from '../context/AppContext';
-import { fmt, gp, filterPeriod, REVENUE_STATUSES } from '../utils/helpers';
+import { fmt, gp, filterPeriod, REVENUE_STATUSES, resolveVendors } from '../utils/helpers';
 import DateFilter from '../components/DateFilter';
 
 function useFP() {
@@ -95,13 +95,14 @@ const CSS = `
 function VendorDeliveries({ vn, filterP, statusFilter, title }) {
   const { db, cfg } = useApp();
   const currency = cfg.currency;
+  const vnList = resolveVendors(vn, cfg);
 
-  const allOrders = db.orders.filter(o => gp(o).some(p => p.vendor === vn));
+  const allOrders = db.orders.filter(o => gp(o).some(p => vnList.includes(p.vendor)));
   const periodOrders = filterP(allOrders).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const orders = statusFilter ? periodOrders.filter(statusFilter) : periodOrders;
 
   function vt(o) {
-    return gp(o).filter(p => p.vendor === vn).reduce((s, p) => s + (Number(p.price) || 0) * (Number(p.qty) || 1), 0);
+    return gp(o).filter(p => vnList.includes(p.vendor)).reduce((s, p) => s + (Number(p.price) || 0) * (Number(p.qty) || 1), 0);
   }
 
   const deliveredCount = periodOrders.filter(o => REVENUE_STATUSES.includes(o.status)).length;
@@ -138,7 +139,7 @@ function VendorDeliveries({ vn, filterP, statusFilter, title }) {
       {orders.length === 0
         ? <div className="empty-box"><p className="empty-t">No orders in this category</p></div>
         : orders.map(o => {
-            const prods = gp(o).filter(p => p.vendor === vn);
+            const prods = gp(o).filter(p => vnList.includes(p.vendor));
             const val = vt(o);
             const isRevenue = REVENUE_STATUSES.includes(o.status);
             return (
@@ -176,18 +177,19 @@ function VendorInvoice({ vn, filterP }) {
   const [generating, setGenerating] = useState(false);
   const currency = cfg.currency;
   const today = new Date().toISOString().slice(0, 10);
+  const vnList = resolveVendors(vn, cfg);
 
   const periodLabel = period === 'today' ? 'Today' : period === 'yesterday' ? 'Yesterday'
     : period === 'week' ? 'This Week' : period === 'month' ? 'This Month'
     : period === 'range' && rangeFrom ? `${rangeFrom} → ${rangeTo}` : 'All Time';
 
   function vt(o) {
-    return gp(o).filter(p => p.vendor === vn).reduce((s, p) => s + (Number(p.price)||0) * (Number(p.qty)||1), 0);
+    return gp(o).filter(p => vnList.includes(p.vendor)).reduce((s, p) => s + (Number(p.price)||0) * (Number(p.qty)||1), 0);
   }
 
   // Period-filtered delivered orders
   const orders = filterP(
-    db.orders.filter(o => gp(o).some(p => p.vendor === vn) && REVENUE_STATUSES.includes(o.status))
+    db.orders.filter(o => gp(o).some(p => vnList.includes(p.vendor)) && REVENUE_STATUSES.includes(o.status))
   ).sort((a, b) => (b.date||'').localeCompare(a.date||''));
 
   const grossTotal = orders.reduce((s, o) => s + vt(o), 0);
@@ -195,11 +197,11 @@ function VendorInvoice({ vn, filterP }) {
   const netPayable = Math.max(0, grossTotal - fees);
 
   // All-time for payment status
-  const allOrders = db.orders.filter(o => gp(o).some(p => p.vendor === vn) && REVENUE_STATUSES.includes(o.status));
+  const allOrders = db.orders.filter(o => gp(o).some(p => vnList.includes(p.vendor)) && REVENUE_STATUSES.includes(o.status));
   const allGross = allOrders.reduce((s, o) => s + vt(o), 0);
   const allFees = allOrders.reduce((s, o) => s + (db.deliveryFees[o.id] || 0), 0);
   const allNetPayable = Math.max(0, allGross - allFees);
-  const payments = [...(db.vendorPayments[vn] || [])].sort((a, b) => (b.date||'').localeCompare(a.date||''));
+  const payments = vnList.flatMap(v => db.vendorPayments[v] || []).sort((a, b) => (b.date||'').localeCompare(a.date||''));
   const totalPaid = payments.reduce((s, p) => s + (p.amount||0), 0);
   const remaining = Math.max(0, allNetPayable - totalPaid);
 
@@ -209,7 +211,7 @@ function VendorInvoice({ vn, filterP }) {
   // Product breakdown: qty sold + total value + warehouse
   const productMap = {};
   orders.forEach(o => {
-    gp(o).filter(p => p.vendor === vn).forEach(p => {
+    gp(o).filter(p => vnList.includes(p.vendor)).forEach(p => {
       if (!productMap[p.name]) productMap[p.name] = { sold:0, value:0, warehouse:0 };
       const qty = Number(p.qty)||1;
       productMap[p.name].sold += qty;
@@ -217,10 +219,12 @@ function VendorInvoice({ vn, filterP }) {
     });
   });
   Object.values(db.inventory).forEach(branchInv => {
-    const vInv = branchInv[vn] || {};
-    Object.entries(vInv).forEach(([product, vals]) => {
-      if (!productMap[product]) productMap[product] = { sold:0, value:0, warehouse:0 };
-      productMap[product].warehouse += Math.max(0, (vals.received||0) - (vals.sentOut||0) - (vals.delivered||0));
+    vnList.forEach(v => {
+      const vInv = branchInv[v] || {};
+      Object.entries(vInv).forEach(([product, vals]) => {
+        if (!productMap[product]) productMap[product] = { sold:0, value:0, warehouse:0 };
+        productMap[product].warehouse += Math.max(0, (vals.received||0) - (vals.sentOut||0) - (vals.delivered||0));
+      });
     });
   });
   const productRows = Object.entries(productMap)

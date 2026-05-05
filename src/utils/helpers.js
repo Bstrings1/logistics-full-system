@@ -110,6 +110,11 @@ export function filterPeriod(list, period, rangeFrom, rangeTo) {
   return list;
 }
 
+export function resolveVendors(vn, cfg) {
+  const groups = cfg.vendorGroups || {};
+  return [vn, ...(groups[vn] || [])];
+}
+
 export function buildUsers(cfg) {
   const creds = cfg.credentials || {};
   const u = [{
@@ -125,7 +130,9 @@ export function buildUsers(cfg) {
   });
   u.push({ username: 'inv_admin', password: creds['inventory-admin'] ?? 'invaadmin2025', role: 'inventory-admin', branch: null, display: 'Inventory Admin' });
   u.push({ username: 'delivery_fee', password: creds['delivery-fee'] ?? 'fee@2025', role: 'delivery-fee', branch: null, display: 'Delivery Fee Manager' });
+  const subVendors = new Set(Object.values(cfg.vendorGroups || {}).flat());
   cfg.vendors.forEach(v => {
+    if (subVendors.has(v)) return;
     const vl = v.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
     u.push({ username: `vendor_${vl}`, password: creds[`vendor-${v}`] ?? 'vendor_2025', role: 'vendor', vendorName: v, display: v });
   });
