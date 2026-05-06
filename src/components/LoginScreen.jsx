@@ -232,6 +232,8 @@ export default function LoginScreen() {
   async function doRegister() {
     const { email, password, role, branch, vendorName } = regForm;
     if (!email || !password || !role) return setError('Fill in all required fields');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError('Please enter a valid email address');
+    if (password.length < 6) return setError('Password must be at least 6 characters');
     if (selectedRole?.needsBranch && !branch) return setError('Select your branch');
     if (selectedRole?.needsVendor && !vendorName) return setError('Enter your vendor name');
 
