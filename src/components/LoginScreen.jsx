@@ -237,14 +237,14 @@ export default function LoginScreen() {
     setRegStatus('submitting');
     setError('');
 
-    const { error: dbErr } = await supabase.from('pending_registrations').insert({
+    const { data: inserted, error: dbErr } = await supabase.from('pending_registrations').insert({
       email, password, role, branch: branch || null, vendor_name: vendorName || null,
-    });
+    }).select('id').single();
 
     if (dbErr) { setRegStatus('idle'); setError('Something went wrong. Try again.'); return; }
 
     await supabase.functions.invoke('notify-registration', {
-      body: { email, role, branch: branch || null, vendorName: vendorName || null },
+      body: { email, role, branch: branch || null, vendorName: vendorName || null, registrationId: inserted.id },
     });
 
     setRegStatus('sent');
