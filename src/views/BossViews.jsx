@@ -1059,7 +1059,7 @@ function PendingRegistrations() {
   }, []);
 
   async function approve(reg) {
-    if (!confirm(`Approve ${reg.username}@kyneparcel.com as ${ROLE_LABELS[reg.role] || reg.role}?`)) return;
+    if (!confirm(`Approve ${reg.email} as ${ROLE_LABELS[reg.role] || reg.role}?`)) return;
     setActionId(reg.id);
     const { error } = await supabase.functions.invoke('approve-user', { body: { registrationId: reg.id } });
     if (error) { alert('Error: ' + error.message); setActionId(null); return; }
@@ -1079,11 +1079,11 @@ function PendingRegistrations() {
   async function resend(reg) {
     setActionId(reg.id);
     const { error } = await supabase.functions.invoke('resend-password-link', {
-      body: { kyneEmail: `${reg.username}@kyneparcel.com`, personalEmail: reg.email, username: reg.username },
+      body: { email: reg.email },
     });
     setActionId(null);
     if (error) { alert('Error: ' + error.message); return; }
-    alert(`New password link sent to ${reg.email}`);
+    alert(`Password reset link sent to ${reg.email}`);
   }
 
   if (loadingRegs) return <div style={{ padding: 16, color: '#858cab', fontSize: 13 }}>Loading…</div>;
@@ -1095,12 +1095,11 @@ function PendingRegistrations() {
         : (
           <div className="bv-tw" style={{ marginTop: 8 }}>
             <table>
-              <thead><tr><th>Username</th><th>Email</th><th>Role</th><th>Branch</th><th>Date</th><th></th></tr></thead>
+              <thead><tr><th>Email</th><th>Role</th><th>Branch</th><th>Date</th><th></th></tr></thead>
               <tbody>
                 {regs.map(r => (
                   <tr key={r.id}>
-                    <td style={{ fontWeight: 700 }}>{r.username}<span style={{ color: '#858cab', fontWeight: 400 }}>@kyneparcel.com</span></td>
-                    <td className="bv-mono" style={{ fontSize: 12 }}>{r.email}</td>
+                    <td style={{ fontWeight: 700 }}>{r.email}</td>
                     <td><Pill type="blue">{ROLE_LABELS[r.role] || r.role}</Pill></td>
                     <td>{r.branch || r.vendor_name || <span style={{ color: '#858cab' }}>—</span>}</td>
                     <td className="bv-mono" style={{ fontSize: 11 }}>{r.created_at?.slice(0, 10)}</td>
@@ -1122,12 +1121,11 @@ function PendingRegistrations() {
           <div style={{ fontSize: 11, fontWeight: 700, color: '#858cab', letterSpacing: '.1em', textTransform: 'uppercase', marginTop: 18, marginBottom: 8 }}>Approved Accounts</div>
           <div className="bv-tw">
             <table>
-              <thead><tr><th>Kyne Email</th><th>Personal Email</th><th>Role</th><th>Date</th><th></th></tr></thead>
+              <thead><tr><th>Email</th><th>Role</th><th>Date</th><th></th></tr></thead>
               <tbody>
                 {approved.map(r => (
                   <tr key={r.id}>
-                    <td style={{ fontWeight: 700 }}>{r.username}@kyneparcel.com</td>
-                    <td className="bv-mono" style={{ fontSize: 12 }}>{r.email}</td>
+                    <td style={{ fontWeight: 700 }}>{r.email}</td>
                     <td><Pill type="g">{ROLE_LABELS[r.role] || r.role}</Pill></td>
                     <td className="bv-mono" style={{ fontSize: 11 }}>{r.created_at?.slice(0, 10)}</td>
                     <td>

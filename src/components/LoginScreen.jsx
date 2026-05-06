@@ -173,8 +173,9 @@ export default function LoginScreen() {
   const [userVal, setUserVal] = useState('');
   const [remember, setRemember] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
-  const [regForm, setRegForm] = useState({ username: '', email: '', role: '', branch: '', vendorName: '' });
+  const [regForm, setRegForm] = useState({ email: '', password: '', role: '', branch: '', vendorName: '' });
   const [regStatus, setRegStatus] = useState('idle');
+  const [showRegPw, setShowRegPw] = useState(false);
 
   const company = cfg.company || 'Kyne';
   const selectedRole = ROLE_OPTIONS.find(r => r.value === regForm.role);
@@ -228,24 +229,22 @@ export default function LoginScreen() {
   }
 
   async function doRegister() {
-    const { username, email, role, branch, vendorName } = regForm;
-    if (!username || !email || !role) return setError('Fill in all required fields');
+    const { email, password, role, branch, vendorName } = regForm;
+    if (!email || !password || !role) return setError('Fill in all required fields');
     if (selectedRole?.needsBranch && !branch) return setError('Select your branch');
     if (selectedRole?.needsVendor && !vendorName) return setError('Enter your vendor name');
-    if (!/^[a-zA-Z0-9._]+$/.test(username)) return setError('Username can only contain letters, numbers, dots and underscores');
 
     setRegStatus('submitting');
     setError('');
 
-    const cleanUsername = username.toLowerCase().replace(/\s+/g, '.');
     const { error: dbErr } = await supabase.from('pending_registrations').insert({
-      username: cleanUsername, email, role, branch: branch || null, vendor_name: vendorName || null,
+      email, password, role, branch: branch || null, vendor_name: vendorName || null,
     });
 
     if (dbErr) { setRegStatus('idle'); setError('Something went wrong. Try again.'); return; }
 
     await supabase.functions.invoke('notify-registration', {
-      body: { username: cleanUsername, email, role, branch: branch || null, vendorName: vendorName || null },
+      body: { email, role, branch: branch || null, vendorName: vendorName || null },
     });
 
     setRegStatus('sent');
@@ -345,7 +344,7 @@ export default function LoginScreen() {
                   <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700 }}>Request Sent!</h2>
                   <p style={{ fontSize: 13, color: '#5b6385', margin: 0 }}>Your account request has been submitted. You'll receive an email at <strong>{regForm.email}</strong> once it's approved.</p>
                 </div>
-                <button className="kyne-btn" style={{ marginTop: 20 }} onClick={() => { setMode('login'); setRegStatus('idle'); setRegForm({ username: '', email: '', role: '', branch: '', vendorName: '' }); }}>
+                <button className="kyne-btn" style={{ marginTop: 20 }} onClick={() => { setMode('login'); setRegStatus('idle'); setRegForm({ email: '', password: '', role: '', branch: '', vendorName: '' }); }}>
                   Back to Sign In
                 </button>
               </>
@@ -358,23 +357,25 @@ export default function LoginScreen() {
                   {error && <div className="kyne-err">{error}</div>}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#1f2747' }}>Username <span style={{ color: '#858cab', fontWeight: 400 }}>(becomes your Kyne email)</span></label>
-                    <div className="kyne-input-wrap">
-                      <span className="kyne-input-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
-                      </span>
-                      <input type="text" placeholder="e.g. john" value={regForm.username} onChange={e => setRegForm(f => ({ ...f, username: e.target.value }))} />
-                      {regForm.username && <div className="kyne-input-trailing"><span style={{ fontSize: 11, color: '#3b9fd4', fontWeight: 600 }}>{regForm.username.toLowerCase()}@kyneparcel.com</span></div>}
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: '#1f2747' }}>Personal Email</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#1f2747' }}>Email</label>
                     <div className="kyne-input-wrap">
                       <span className="kyne-input-icon">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 7 10-7"/></svg>
                       </span>
-                      <input type="email" placeholder="your@gmail.com" value={regForm.email} onChange={e => setRegForm(f => ({ ...f, email: e.target.value }))} />
+                      <input type="email" placeholder="your@email.com" value={regForm.email} onChange={e => setRegForm(f => ({ ...f, email: e.target.value }))} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#1f2747' }}>Password</label>
+                    <div className="kyne-input-wrap">
+                      <span className="kyne-input-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                      </span>
+                      <input type={showRegPw ? 'text' : 'password'} placeholder="Choose a password" value={regForm.password} onChange={e => setRegForm(f => ({ ...f, password: e.target.value }))} />
+                      <div className="kyne-input-trailing">
+                        <button type="button" className="kyne-show-btn" onClick={() => setShowRegPw(v => !v)}>{showRegPw ? 'HIDE' : 'SHOW'}</button>
+                      </div>
                     </div>
                   </div>
 
