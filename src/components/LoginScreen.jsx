@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { buildUsers, getTabs } from '../utils/helpers';
+import { getTabs } from '../utils/helpers';
 import { supabase } from '../lib/supabase';
 
 const CSS = `
@@ -185,48 +185,33 @@ export default function LoginScreen() {
     const userInput = userRef.current.value.trim();
     const pass = passRef.current.value;
 
-    if (userInput.includes('@')) {
-      setLoginLoading(true);
-      setError('');
-      const { data, error: authErr } = await supabase.auth.signInWithPassword({ email: userInput, password: pass });
-      if (authErr) {
-        setError('Incorrect credentials. Please try again.');
-        setShake(true);
-        setTimeout(() => setShake(false), 400);
-        setLoginLoading(false);
-        return;
-      }
-      const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
-      if (!profile) {
-        setError('Account not fully set up. Contact admin.');
-        setLoginLoading(false);
-        return;
-      }
-      setSession({ role: profile.role, branch: profile.branch || null, vendorName: profile.vendor_name || null, display: profile.username, kyneEmail: profile.kyne_email });
-      const tabs = getTabs(profile.role);
-      if (tabs.length) setActiveTab(tabs[0].id);
-      setLoginLoading(false);
-      return;
-    }
-
-    const adminCreds = cfg.credentials?.admin || { username: 'Bstrings', password: '503320' };
-    if (userInput === adminCreds.username && pass === adminCreds.password) {
-      setError('');
-      setSession({ role: 'admin', display: 'Super Admin' });
-      return;
-    }
-
-    const found = buildUsers(cfg).find(u => u.username.toLowerCase() === userInput.toLowerCase() && u.password === pass);
-    if (!found) {
-      setError('Incorrect credentials. Please try again.');
+    if (!userInput.includes('@')) {
+      setError('Please enter your email address.');
       setShake(true);
       setTimeout(() => setShake(false), 400);
       return;
     }
+
+    setLoginLoading(true);
     setError('');
-    setSession(found);
-    const tabs = getTabs(found.role);
+    const { data, error: authErr } = await supabase.auth.signInWithPassword({ email: userInput, password: pass });
+    if (authErr) {
+      setError('Incorrect credentials. Please try again.');
+      setShake(true);
+      setTimeout(() => setShake(false), 400);
+      setLoginLoading(false);
+      return;
+    }
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+    if (!profile) {
+      setError('Account not fully set up. Contact admin.');
+      setLoginLoading(false);
+      return;
+    }
+    setSession({ role: profile.role, branch: profile.branch || null, vendorName: profile.vendor_name || null, display: profile.username, kyneEmail: profile.kyne_email });
+    const tabs = getTabs(profile.role);
     if (tabs.length) setActiveTab(tabs[0].id);
+    setLoginLoading(false);
   }
 
   async function doRegister() {
@@ -284,7 +269,7 @@ export default function LoginScreen() {
                   {error && <div className="kyne-err">{error}</div>}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.02em', color: '#1f2747' }}>Username or Kyne Email</label>
+                    <label style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.02em', color: '#1f2747' }}>Email</label>
                     <div className="kyne-input-wrap">
                       <span className="kyne-input-icon">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
