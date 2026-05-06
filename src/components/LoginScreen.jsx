@@ -177,15 +177,6 @@ export default function LoginScreen() {
   const [regStatus, setRegStatus] = useState('idle');
   const [showRegPw, setShowRegPw] = useState(false);
 
-  const approveParam = new URLSearchParams(window.location.search).get('approve');
-  const approveEmail = new URLSearchParams(window.location.search).get('email');
-  const approveMsg = approveParam === 'ok'
-    ? `✓ Approved! Welcome email sent to ${approveEmail || 'the user'}.`
-    : approveParam === 'already' ? 'This account was already approved.'
-    : approveParam === 'notfound' ? 'Request not found — may have been deleted.'
-    : approveParam === 'rejected' ? 'This request was previously rejected.'
-    : approveParam === 'error' ? 'Something went wrong approving this account.'
-    : null;
 
   const company = cfg.company || 'Kyne';
   const selectedRole = ROLE_OPTIONS.find(r => r.value === regForm.role);
@@ -247,14 +238,14 @@ export default function LoginScreen() {
     setRegStatus('submitting');
     setError('');
 
-    const { data: inserted, error: dbErr } = await supabase.from('pending_registrations').insert({
+    const { error: dbErr } = await supabase.from('pending_registrations').insert({
       email, password, role, branch: branch || null, vendor_name: vendorName || null,
-    }).select('id').single();
+    });
 
     if (dbErr) { setRegStatus('idle'); setError('Something went wrong. Try again.'); return; }
 
     await supabase.functions.invoke('notify-registration', {
-      body: { email, role, branch: branch || null, vendorName: vendorName || null, registrationId: inserted.id },
+      body: { email, role, branch: branch || null, vendorName: vendorName || null },
     });
 
     setRegStatus('sent');
@@ -287,16 +278,7 @@ export default function LoginScreen() {
                 <h1 style={{ margin: 0, fontSize: 26, lineHeight: 1.15, letterSpacing: '-0.5px', fontWeight: 700, color: '#0b1230' }}>Welcome back</h1>
                 <p style={{ marginTop: 6, marginBottom: 0, fontSize: 14, color: '#5b6385' }}>Sign in to your {company} account to continue.</p>
 
-                {approveMsg && (
-                  <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 500,
-                    background: approveParam === 'ok' ? '#dcfce7' : '#fef3c7',
-                    color: approveParam === 'ok' ? '#166534' : '#92400e',
-                    border: `1px solid ${approveParam === 'ok' ? '#bbf7d0' : '#fde68a'}` }}>
-                    {approveMsg}
-                  </div>
-                )}
-
-                <form style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 11 }} onSubmit={e => { e.preventDefault(); doLogin(); }}>
+<form style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 11 }} onSubmit={e => { e.preventDefault(); doLogin(); }}>
                   {error && <div className="kyne-err">{error}</div>}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
