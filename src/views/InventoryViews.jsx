@@ -418,10 +418,27 @@ function InvStock({ branch, isAdmin, setActiveTab }) {
 
 /* ─── Waybill In ───────────────────────────────────────────── */
 function WaybillIn() {
-  const { cfg, setDb } = useApp();
+  const { cfg, setCfg, setDb } = useApp();
   const [fields, setFields] = useState({ vendor: cfg.vendors[0] || '', product: '', qty: '', date: TODAY, note: '' });
+  const [newProdVendor, setNewProdVendor] = useState(cfg.vendors[0] || '');
+  const [newProdName, setNewProdName] = useState('');
   const products = Array.isArray(cfg.products) ? cfg.products : (cfg.products?.[fields.vendor] || []);
   const canSave = fields.product && fields.qty && Number(fields.qty) > 0;
+
+  function addProduct() {
+    const name = newProdName.trim();
+    if (!name || !newProdVendor) return;
+    const existing = cfg.products?.[newProdVendor] || [];
+    if (existing.map(p => p.toLowerCase()).includes(name.toLowerCase())) {
+      alert('Product already exists for this vendor');
+      return;
+    }
+    setCfg(prev => ({
+      ...prev,
+      products: { ...prev.products, [newProdVendor]: [...(prev.products?.[newProdVendor] || []), name] },
+    }));
+    setNewProdName('');
+  }
 
   function save() {
     if (!canSave) return;
@@ -484,6 +501,44 @@ function WaybillIn() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Add product to vendor */}
+      <div className="inv2-form-panel" style={{ marginTop: 20 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Add new product</div>
+        <div style={{ fontSize: 13, color: '#5b6385', marginBottom: 16 }}>Add a product name to a vendor's list so it shows up in waybills and orders.</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
+          <Field label="Vendor">
+            <Select value={newProdVendor} onChange={e => setNewProdVendor(e.target.value)} options={cfg.vendors} />
+          </Field>
+          <Field label="Product name">
+            <Input
+              value={newProdName}
+              onChange={e => setNewProdName(e.target.value)}
+              placeholder="e.g. New capsule"
+            />
+          </Field>
+          <button
+            className={`inv2-btn primary${!newProdName.trim() ? ' off' : ''}`}
+            disabled={!newProdName.trim()}
+            onClick={addProduct}
+            style={{ height: 44 }}
+          >
+            + Add
+          </button>
+        </div>
+        {newProdVendor && (cfg.products?.[newProdVendor] || []).length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#858cab', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+              Current products — {newProdVendor}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {(cfg.products[newProdVendor] || []).map(p => (
+                <span key={p} style={{ fontSize: 12, background: '#eef2ff', color: '#2a3ef0', borderRadius: 6, padding: '3px 10px', fontWeight: 600 }}>{p}</span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

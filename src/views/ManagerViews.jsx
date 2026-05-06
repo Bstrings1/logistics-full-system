@@ -480,16 +480,37 @@ function MgrExpenses({ filterP, fmtC, branch }) {
 }
 
 function MgrRiders({ filterP, fmtC, branch }) {
-  const { cfg, db } = useApp();
+  const { cfg, db, setDb } = useApp();
   const b = branch;
   const allOrders = filterP(db.orders.filter(o => o.branch === b));
   const riders = db.riders[b] || [];
+  const [newRider, setNewRider] = useState('');
+
+  function addRider() {
+    const name = newRider.trim();
+    if (!name) return;
+    if (riders.includes(name)) { alert('Rider already exists'); return; }
+    setDb(prev => ({ ...prev, riders: { ...prev.riders, [b]: [...(prev.riders[b] || []), name] } }));
+    setNewRider('');
+  }
+
+  function removeRider(name) {
+    if (!confirm(`Remove ${name} from riders?`)) return;
+    setDb(prev => ({ ...prev, riders: { ...prev.riders, [b]: (prev.riders[b] || []).filter(r => r !== name) } }));
+  }
 
   return (
     <>
       <div className="pg-hd"><p className="pg-title">Riders</p></div>
       <div className="pg-body">
         <DateFilter />
+        <div className="card mb12">
+          <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>Add Rider</p>
+          <div className="row" style={{ gap: 8 }}>
+            <input className="inp" style={{ flex: 1 }} placeholder="Rider name..." value={newRider} onChange={e => setNewRider(e.target.value)} onKeyDown={e => e.key === 'Enter' && addRider()} />
+            <button className="btn btn-primary btn-sm" onClick={addRider}>+ Add</button>
+          </div>
+        </div>
         <div className="card">
           <table className="tbl">
             <thead>
@@ -500,6 +521,7 @@ function MgrRiders({ filterP, fmtC, branch }) {
                 <th>Returns</th>
                 <th>Success Rate</th>
                 <th>Cycle Bonus</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -526,9 +548,11 @@ function MgrRiders({ filterP, fmtC, branch }) {
                       </div>
                     </td>
                     <td style={{ fontWeight: 700, color: 'var(--purple)' }}>{fmtC(calcBonus(cc, cycleRate, name, cfg))}</td>
+                    <td><button className="btn btn-red-soft btn-xs" onClick={() => removeRider(name)}>Remove</button></td>
                   </tr>
                 );
               })}
+              {riders.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--t4)', padding: '16px 0' }}>No riders yet — add one above</td></tr>}
             </tbody>
           </table>
         </div>
