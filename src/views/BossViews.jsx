@@ -1173,6 +1173,9 @@ function BossTools({ setActiveTab, cfg }) {
             </div>
           ))}
         </div>
+        <div style={{ marginTop: 16 }}>
+          <PendingRegistrations />
+        </div>
       </div>
     </div>
   );
