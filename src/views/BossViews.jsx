@@ -1162,15 +1162,6 @@ function BossTools({ setActiveTab, cfg }) {
             <div style={{ fontSize: 12, color: '#5b6385' }}>Track loans and repayments</div>
           </div>
         </div>
-        <div className="bv-rowcard" style={{ padding: 18, background: '#fafbff' }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#858cab', marginBottom: 12 }}>Staff Login Credentials</div>
-          {[{ u: 'boss', p: 'boss@2025', r: 'Boss / CEO' }, ...cfg.branches.map(b => ({ u: `${b.toLowerCase()}_manager`, p: `${b.toLowerCase()}mgr2025`, r: `${b} Manager` }))].map(u => (
-            <div key={u.u} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eef0f7' }}>
-              <span style={{ fontSize: 12, color: '#5b6385' }}>{u.r}</span>
-              <code style={{ fontSize: 11, color: '#858cab' }}>{u.u} / {u.p}</code>
-            </div>
-          ))}
-        </div>
         <div style={{ marginTop: 16 }}>
           <PendingRegistrations />
         </div>
