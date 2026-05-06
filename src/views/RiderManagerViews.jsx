@@ -27,8 +27,35 @@ export default function RiderManagerViews({ tabId }) {
   return <RiderLog filterP={filterP} fmtC={fmtC} branch={b} />;
 }
 
+function ActivityLog({ activity }) {
+  const [open, setOpen] = useState(false);
+  if (!activity?.length) return null;
+  return (
+    <div style={{ marginTop: 8, borderTop: '1px solid var(--border-soft)', paddingTop: 8 }}>
+      <button onClick={() => setOpen(v => !v)} style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--t3)', cursor: 'pointer', fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>
+        {open ? '▲' : '▼'} More Info
+      </button>
+      {open && (
+        <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {activity.map((a, i) => (
+            <div key={i} style={{ fontSize: 11, padding: '5px 8px', background: 'var(--bg)', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <div style={{ minWidth: 0 }}>
+                <span style={{ fontWeight: 700, color: 'var(--navy)' }}>{a.by}</span>
+                <span style={{ color: 'var(--t3)' }}> — {a.action}</span>
+              </div>
+              <span style={{ color: 'var(--t4)', fontSize: 10, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                {new Date(a.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RiderLog({ filterP, fmtC, branch }) {
-  const { cfg, db, setDb, setActiveTab } = useApp();
+  const { cfg, db, setDb, setActiveTab, session } = useApp();
   const b = branch;
   const riders = db.riders[b] || [];
   const unassigned = filterP(db.orders.filter(o => o.branch === b && o.status === 'Unassigned'));
@@ -74,9 +101,10 @@ function RiderLog({ filterP, fmtC, branch }) {
   function save() {
     if (!canSave) return;
     const prods = products.map(r => ({ vendor, name: r.name, price: Number(r.price), qty: Number(r.qty) || 1 }));
+    const by = session.kyneEmail || session.display;
     setDb(prev => ({
       ...prev,
-      orders: [...prev.orders, { id: Date.now(), branch: b, rider: '', customerName, phone, address, status: 'Unassigned', date, products: prods }],
+      orders: [...prev.orders, { id: Date.now(), branch: b, rider: '', customerName, phone, address, status: 'Unassigned', date, products: prods, activity: [{ by, action: 'Logged order', time: new Date().toISOString() }] }],
     }));
     setCustomerName(''); setPhone(''); setAddress(''); setDate(TODAY);
     setProducts([{ id: Date.now(), name: '', price: '', qty: '1' }]);
@@ -235,7 +263,7 @@ function ProdRow({ idx, row, products, showRemove, onRemove, onChange, branch, v
 }
 
 function RiderAssign({ filterP, fmtC, branch }) {
-  const { db, setDb } = useApp();
+  const { db, setDb, session } = useApp();
   const b = branch;
   const riders = db.riders[b] || [];
   const unassigned = filterP(db.orders.filter(o => o.branch === b && o.status === 'Unassigned'));
@@ -252,7 +280,15 @@ function RiderAssign({ filterP, fmtC, branch }) {
   function assign(id) {
     const rider = selectedRiders[id];
     if (!rider || rider === 'Select rider...') return;
-    setDb(prev => ({ ...prev, orders: prev.orders.map(o => String(o.id) === String(id) ? { ...o, rider, status: 'Pending' } : o) }));
+    const by = session.kyneEmail || session.display;
+    setDb(prev => ({
+      ...prev,
+      orders: prev.orders.map(o => {
+        if (String(o.id) !== String(id)) return o;
+        const entry = { by, action: `Assigned to ${rider}`, time: new Date().toISOString() };
+        return { ...o, rider, status: 'Pending', activity: [...(o.activity || []), entry] };
+      }),
+    }));
   }
 
   function cancel(id) {
@@ -309,6 +345,7 @@ function RiderAssign({ filterP, fmtC, branch }) {
                 <button className="btn btn-primary btn-sm" onClick={() => assign(o.id)}>Assign</button>
                 <button className="btn btn-red-soft btn-sm" onClick={() => cancel(o.id)}>Cancel</button>
               </div>
+              <ActivityLog activity={o.activity} />
             </div>
           );
         }) : <div className="empty-box"><p className="empty-t">All orders assigned ✓</p></div>}
@@ -350,7 +387,7 @@ function RiderFilter({ riders, value, onChange }) {
 }
 
 function RiderUpdate({ filterP, fmtC, branch }) {
-  const { db, setDb, setEditModalOrderId, setEditModalStatus } = useApp();
+  const { db, setDb, setEditModalOrderId, setEditModalStatus, session } = useApp();
   const b = branch;
   const riders = db.riders[b] || [];
   const fo = filterP(db.orders.filter(o => o.branch === b));
@@ -371,7 +408,15 @@ function RiderUpdate({ filterP, fmtC, branch }) {
   const [failReason, setFailReason] = useState('');
 
   function setStatus(id, status, extra = {}) {
-    setDb(prev => ({ ...prev, orders: prev.orders.map(o => String(o.id) === String(id) ? { ...o, status, ...extra } : o) }));
+    const by = session.kyneEmail || session.display;
+    setDb(prev => ({
+      ...prev,
+      orders: prev.orders.map(o => {
+        if (String(o.id) !== String(id)) return o;
+        const entry = { by, action: `Updated to ${status}`, time: new Date().toISOString() };
+        return { ...o, status, ...extra, activity: [...(o.activity || []), entry] };
+      }),
+    }));
   }
 
   function openFailModal(id) {
@@ -396,12 +441,14 @@ function RiderUpdate({ filterP, fmtC, branch }) {
   function confirmComplete() {
     const paid = Number(completingAmt);
     if (!paid || paid <= 0) { alert('Enter the amount paid by customer'); return; }
+    const by = session.kyneEmail || session.display;
     setDb(prev => ({
       ...prev,
-      orders: prev.orders.map(o => String(o.id) === String(completingId)
-        ? { ...o, status: 'Completed', paidAmount: paid }
-        : o
-      ),
+      orders: prev.orders.map(o => {
+        if (String(o.id) !== String(completingId)) return o;
+        const entry = { by, action: 'Updated to Completed', time: new Date().toISOString() };
+        return { ...o, status: 'Completed', paidAmount: paid, activity: [...(o.activity || []), entry] };
+      }),
     }));
     setCompletingId(null);
     setCompletingAmt('');
@@ -517,6 +564,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                     )}
                   </div>
                 </div>
+                <ActivityLog activity={o.activity} />
               </div>
             )})}
           </>
@@ -544,6 +592,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                         <button
                           style={{ padding: '5px 10px', background: '#fef3c7', color: '#a16207', border: '1.5px solid #fcd34d', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                           onClick={() => {
+                            const by = session.kyneEmail || session.display;
                             setDb(prev => {
                               const inv = JSON.parse(JSON.stringify(prev.inventory));
                               gp(o).forEach(p => {
@@ -556,7 +605,11 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                               return {
                                 ...prev,
                                 inventory: inv,
-                                orders: prev.orders.map(x => String(x.id) === String(o.id) ? { ...x, status: 'Replaced' } : x),
+                                orders: prev.orders.map(x => {
+                                  if (String(x.id) !== String(o.id)) return x;
+                                  const entry = { by, action: 'Updated to Replaced', time: new Date().toISOString() };
+                                  return { ...x, status: 'Replaced', activity: [...(x.activity || []), entry] };
+                                }),
                               };
                             });
                           }}

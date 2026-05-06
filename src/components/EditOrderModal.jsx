@@ -8,7 +8,7 @@ const S = {
 };
 
 export default function EditOrderModal() {
-  const { db, setDb, editModalOrderId, setEditModalOrderId, editModalStatus } = useApp();
+  const { db, setDb, editModalOrderId, setEditModalOrderId, editModalStatus, session } = useApp();
   const [fields, setFields] = useState({ customerName: '', phone: '', address: '' });
   const [products, setProducts] = useState([]);
 
@@ -54,12 +54,15 @@ export default function EditOrderModal() {
         inv[branch][vendor][p.name].delivered = (inv[branch][vendor][p.name].delivered || 0) + qty;
       });
 
+      const by = session?.kyneEmail || session?.display || 'Unknown';
+      const status = editModalStatus || 'Delivered';
+      const entry = { by, action: `Updated to ${status}`, time: new Date().toISOString() };
       return {
         ...prev,
         inventory: inv,
         orders: prev.orders.map(o =>
           o.id === editModalOrderId
-            ? { ...o, ...fields, products: finalProds, status: editModalStatus || 'Delivered' }
+            ? { ...o, ...fields, products: finalProds, status, activity: [...(o.activity || []), entry] }
             : o
         ),
       };

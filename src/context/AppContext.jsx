@@ -160,6 +160,7 @@ function rowsToDb({ orders = [], riders = [], payments = [], expenses = [],
       status: o.status, date: o.date, products: o.products || [],
       paidAmount: o.paid_amount !== undefined ? o.paid_amount : undefined,
       failReason: o.fail_reason || null,
+      activity: Array.isArray(o.activity) ? o.activity : [],
     })),
     riders: ridersObj,
     payments: paymentsObj,
@@ -192,6 +193,7 @@ async function syncChanges(prev, next) {
         status: o.status, date: o.date, products: o.products,
         paid_amount: o.paidAmount !== undefined ? o.paidAmount : null,
         fail_reason: o.failReason || null,
+        activity: o.activity || [],
       }))));
     }
     if (toDelete.length) {
