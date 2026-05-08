@@ -6,7 +6,7 @@ import Sidebar from './components/Sidebar';
 import EditOrderModal from './components/EditOrderModal';
 import BossViews from './views/BossViews';
 import ManagerViews from './views/ManagerViews';
-import RiderManagerViews from './views/RiderManagerViews';
+import RiderManagerViews, { DeliveryCoordinatorViews } from './views/RiderManagerViews';
 import VendorViews from './views/VendorViews';
 import InventoryViews from './views/InventoryViews';
 import DeliveryFeeViews from './views/DeliveryFeeViews';
@@ -130,6 +130,7 @@ function AppContent() {
     if (session.role === 'boss') return <BossViews tabId={activeTab} />;
     if (session.role === 'manager') return <ManagerViews tabId={activeTab} />;
     if (session.role === 'rider-manager') return <RiderManagerViews tabId={activeTab} />;
+    if (session.role === 'delivery-coordinator') return <DeliveryCoordinatorViews tabId={activeTab} />;
     if (session.role === 'vendor') return <VendorViews tabId={activeTab} />;
     if (session.role === 'inventory') return <InventoryViews tabId={activeTab} />;
     if (session.role === 'inventory-admin') return <InventoryViews tabId={activeTab} />;

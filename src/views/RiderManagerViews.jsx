@@ -27,6 +27,36 @@ export default function RiderManagerViews({ tabId }) {
   return <RiderLog filterP={filterP} fmtC={fmtC} branch={b} />;
 }
 
+export function DeliveryCoordinatorViews({ tabId }) {
+  const { cfg } = useApp();
+  const filterP = useFP();
+  const fmtC = useFmt();
+  const [branch, setBranch] = useState(cfg.branches[0] || '');
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, padding: '12px 14px 0', flexWrap: 'wrap' }}>
+        {cfg.branches.map(b => (
+          <button
+            key={b}
+            onClick={() => setBranch(b)}
+            style={{
+              padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1.5px solid',
+              background: branch === b ? 'var(--primary)' : 'transparent',
+              color: branch === b ? '#fff' : 'var(--primary)',
+              borderColor: 'var(--primary)',
+            }}
+          >{b}</button>
+        ))}
+      </div>
+      {tabId === 'assign' && <RiderAssign filterP={filterP} fmtC={fmtC} branch={branch} />}
+      {tabId === 'update' && <RiderUpdate filterP={filterP} fmtC={fmtC} branch={branch} />}
+      {tabId === 'my-riders' && <RiderMyRiders filterP={filterP} fmtC={fmtC} branch={branch} />}
+      {tabId !== 'assign' && tabId !== 'update' && tabId !== 'my-riders' && <RiderLog filterP={filterP} fmtC={fmtC} branch={branch} />}
+    </div>
+  );
+}
+
 function ActivityLog({ activity }) {
   const [open, setOpen] = useState(false);
   if (!activity?.length) return null;
