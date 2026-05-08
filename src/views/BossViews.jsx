@@ -1047,7 +1047,7 @@ function PendingRegistrations() {
   const [loadingRegs, setLoadingRegs] = useState(true);
   const [actionId, setActionId] = useState(null);
 
-  const ROLE_LABELS = { manager: 'Branch Manager', 'rider-manager': 'Rider Manager', inventory: 'Inventory Manager', 'inventory-admin': 'Inventory Admin', vendor: 'Vendor' };
+  const ROLE_LABELS = { manager: 'Branch Manager', 'rider-manager': 'Rider Manager', 'delivery-coordinator': 'Delivery Coordinator', inventory: 'Inventory Manager', 'inventory-admin': 'Inventory Admin', vendor: 'Vendor' };
 
   useEffect(() => {
     supabase.from('pending_registrations').select('*').order('created_at', { ascending: false })
@@ -1084,6 +1084,16 @@ function PendingRegistrations() {
     setActionId(null);
     if (error) { alert('Error: ' + error.message); return; }
     alert(`Password reset link sent to ${reg.email}`);
+  }
+
+  async function revoke(reg) {
+    if (!confirm(`Revoke access for ${reg.email}? This will delete their account and they will no longer be able to log in.`)) return;
+    setActionId(reg.id);
+    const { error } = await supabase.functions.invoke('revoke-user', { body: { registrationId: reg.id } });
+    setActionId(null);
+    if (error) { alert('Error: ' + error.message); return; }
+    setApproved(a => a.filter(x => x.id !== reg.id));
+    alert(`Account for ${reg.email} has been revoked.`);
   }
 
   if (loadingRegs) return <div style={{ padding: 16, color: '#858cab', fontSize: 13 }}>Loading…</div>;
@@ -1129,9 +1139,14 @@ function PendingRegistrations() {
                     <td><Pill type="g">{ROLE_LABELS[r.role] || r.role}</Pill></td>
                     <td className="bv-mono" style={{ fontSize: 11 }}>{r.created_at?.slice(0, 10)}</td>
                     <td>
-                      <button className="bv-btn amber" style={{ height: 30, fontSize: 12, padding: '0 12px' }} disabled={actionId === r.id} onClick={() => resend(r)}>
-                        {actionId === r.id ? '…' : 'Resend Link'}
-                      </button>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="bv-btn amber" style={{ height: 30, fontSize: 12, padding: '0 12px' }} disabled={actionId === r.id} onClick={() => resend(r)}>
+                          {actionId === r.id ? '…' : 'Resend Link'}
+                        </button>
+                        <button className="bv-btn" style={{ height: 30, fontSize: 12, padding: '0 10px', color: '#e0425a', borderColor: '#fecaca' }} disabled={actionId === r.id} onClick={() => revoke(r)}>
+                          Revoke
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
