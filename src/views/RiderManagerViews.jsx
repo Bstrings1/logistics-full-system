@@ -31,16 +31,16 @@ export function DeliveryCoordinatorViews({ tabId }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, padding: '12px 14px 0', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, padding: '16px 0 12px', flexWrap: 'wrap' }}>
         {cfg.branches.map(b => (
           <button
             key={b}
             onClick={() => setBranch(b)}
             style={{
-              padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1.5px solid',
-              background: branch === b ? 'var(--primary)' : 'transparent',
-              color: branch === b ? '#fff' : 'var(--primary)',
-              borderColor: 'var(--primary)',
+              padding: '7px 18px', borderRadius: 20, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: '1.5px solid var(--purple)',
+              background: branch === b ? 'var(--purple)' : 'transparent',
+              color: branch === b ? '#fff' : 'var(--purple)',
+              letterSpacing: '0.03em',
             }}
           >{b}</button>
         ))}
