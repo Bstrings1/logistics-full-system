@@ -166,7 +166,7 @@ function rowsToDb({ orders = [], riders = [], payments = [], expenses = [],
     payments: paymentsObj,
     expenses: expenses.map(e => ({ id: e.id, branch: e.branch, desc: e.description, cat: e.cat, amount: e.amount, date: e.date, source: e.source || 'cash' })),
     riderExpenses: riderExpenses.map(e => ({ id: e.id, branch: e.branch, rider: e.rider, amount: e.amount, desc: e.description, date: e.date })),
-    remittances: remittances.map(r => ({ id: r.id, branch: r.branch, amount: r.amount, txID: r.tx_id, date: r.date, bank: r.bank, account: r.account, verified: r.verified || false, receiptUrl: r.receipt_url || null })),
+    remittances: remittances.map(r => ({ id: r.id, branch: r.branch, amount: r.amount, txID: r.tx_id, date: r.date, bank: r.bank, account: r.account, verified: r.verified || false, receiptUrl: r.receipt_url || null, covers_dates: r.covers_dates || [] })),
     deliveryFees: deliveryFeesObj,
     loans: loans.map(l => ({ id: l.id, branch: l.branch || null, staff: l.staff, amount: l.amount, salary: l.salary, date: l.date, note: l.note || '', repayments: l.repayments || [], status: l.status || 'active', repayMethod: l.repay_method || 'manual', salaryPct: l.salary_pct || 0, installments: l.installments || [] })),
     inventory: inventoryObj,
@@ -243,6 +243,7 @@ async function syncChanges(prev, next) {
       ops.push(supabase.from('remittances').upsert(toUpsert.map(r => ({
         id: r.id, branch: r.branch, amount: r.amount, tx_id: r.txID, date: r.date,
         bank: r.bank, account: r.account, verified: r.verified || false, receipt_url: r.receiptUrl || null,
+        covers_dates: r.covers_dates || [],
       }))));
     }
     if (toDelete.length) {

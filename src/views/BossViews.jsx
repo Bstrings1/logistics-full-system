@@ -212,13 +212,23 @@ function VerifyModal({ rem, fmtC, onConfirm, onClose }) {
             { l: 'Bank', v: rem.bank || '—' },
             { l: 'Account Number', v: rem.account || '—' },
             { l: 'Transaction ID', v: rem.txID || '—' },
-            { l: 'Date', v: rem.date },
+            { l: 'Date Sent', v: rem.date },
           ].map(({ l, v }) => (
             <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: '1px solid #f0f0f5' }}>
               <span style={{ fontSize: 13, color: '#858cab', fontWeight: 600 }}>{l}</span>
               <span style={{ fontSize: 14, fontWeight: 700, color: '#0b1230', fontFamily: l === 'Transaction ID' || l === 'Account Number' ? 'monospace' : 'inherit' }}>{v}</span>
             </div>
           ))}
+          {rem.covers_dates && rem.covers_dates.length > 0 && (
+            <div style={{ padding: '11px 0', borderBottom: '1px solid #f0f0f5' }}>
+              <span style={{ fontSize: 13, color: '#858cab', fontWeight: 600 }}>Covers Days</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {rem.covers_dates.map(d => (
+                  <span key={d} style={{ fontSize: 12, fontWeight: 700, background: '#eef2ff', color: '#1f2fc4', borderRadius: 6, padding: '3px 8px', fontFamily: 'monospace' }}>{d}</span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         {/* Receipt */}
         <div style={{ padding: '18px 24px 0' }}>
@@ -508,7 +518,7 @@ function BossBranches({ filterP, fmtC, cfg, db }) {
               )}
               <div className="bv-tw" style={{ border: 0, borderRadius: 0, boxShadow: 'none', borderTop: '1px solid #eef0f7' }}>
                 <table>
-                  <thead><tr><th>Amount</th><th>Bank</th><th>TXN ID</th><th>Date</th><th>Receipt</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Amount</th><th>Bank</th><th>TXN ID</th><th>Sent</th><th>Covers</th><th>Receipt</th><th>Status</th></tr></thead>
                   <tbody>
                     {rems.length ? rems.map((r, i) => (
                       <tr key={i}>
@@ -516,6 +526,15 @@ function BossBranches({ filterP, fmtC, cfg, db }) {
                         <td>{r.bank || '—'}</td>
                         <td className="bv-mono">{r.txID || '—'}</td>
                         <td className="bv-mono">{r.date}</td>
+                        <td>
+                          {r.covers_dates && r.covers_dates.length > 0
+                            ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                {r.covers_dates.map(d => (
+                                  <span key={d} style={{ fontSize: 10, fontWeight: 700, background: '#eef2ff', color: '#1f2fc4', borderRadius: 5, padding: '2px 6px', fontFamily: 'monospace' }}>{d}</span>
+                                ))}
+                              </div>
+                            : <span style={{ fontSize: 11, color: '#858cab' }}>—</span>}
+                        </td>
                         <td>
                           {r.receiptUrl
                             ? <a href={r.receiptUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-block' }}>
@@ -525,7 +544,7 @@ function BossBranches({ filterP, fmtC, cfg, db }) {
                         </td>
                         <td>{r.verified ? <Blip type="ok">Verified</Blip> : <button className="bv-btn amber" style={{ height: 30, fontSize: 12 }} onClick={() => setVerifyRem(r)}>Verify →</button>}</td>
                       </tr>
-                    )) : <tr><td colSpan={6}><div className="bv-empty">No remittance logged</div></td></tr>}
+                    )) : <tr><td colSpan={7}><div className="bv-empty">No remittance logged</div></td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -1047,7 +1066,7 @@ function PendingRegistrations() {
   const [loadingRegs, setLoadingRegs] = useState(true);
   const [actionId, setActionId] = useState(null);
 
-  const ROLE_LABELS = { manager: 'Branch Manager', 'rider-manager': 'Rider Manager', 'delivery-coordinator': 'Delivery Coordinator', inventory: 'Inventory Manager', 'inventory-admin': 'Inventory Admin', vendor: 'Vendor' };
+  const ROLE_LABELS = { manager: 'Branch Manager', 'operation-support': 'Operation Support', 'delivery-coordinator': 'Delivery Coordinator', inventory: 'Inventory Manager', 'inventory-admin': 'Inventory Admin', vendor: 'Vendor' };
 
   useEffect(() => {
     supabase.from('pending_registrations').select('*').order('created_at', { ascending: false })

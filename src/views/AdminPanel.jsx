@@ -1332,7 +1332,7 @@ function AdminVendorPaySection({ cfg, db, setDb }) {
 const ROLE_META = {
   boss:            { color: '#0f172a', bg: '#f1f5f9', label: 'Boss / CEO',     icon: '◈' },
   manager:         { color: '#166534', bg: '#dcfce7', label: 'Branch Manager', icon: '⊞' },
-  'rider-manager': { color: '#1e40af', bg: '#dbeafe', label: 'Rider Manager',  icon: '◎' },
+  'operation-support': { color: '#1e40af', bg: '#dbeafe', label: 'Operation Support', icon: '◎' },
   inventory:       { color: '#7c3aed', bg: '#ede9fe', label: 'Inventory',      icon: '▦' },
   'inventory-admin':{ color: '#b45309', bg: '#fef9c3', label: 'Inv Admin',     icon: '▦' },
   vendor:          { color: '#9d174d', bg: '#fce7f3', label: 'Vendor',         icon: '⊕' },

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { fmt, filterPeriod, ot, calcBonus, getBonusCycleOrders, getCycleAllOrders, REVENUE_STATUSES, TODAY } from '../utils/helpers';
@@ -227,10 +227,9 @@ function MgrSend({ filterP, fmtC, branch }) {
   // All-time per-date breakdown to show past unremitted days
   const allPays = Object.values(db.payments).filter(p => p.branch === b);
   const allRems = db.remittances.filter(r => r.branch === b);
-  const allSent = allRems.reduce((s, r) => s + r.amount, 0);
-  const allCash = allPays.reduce((s, p) => s + (p.cash || 0), 0);
-  const allCashExp = db.expenses.filter(e => e.branch === b && e.source !== 'pos').reduce((s, e) => s + e.amount, 0);
-  const allOutstanding = Math.max(0, allCash - allCashExp - allSent);
+  const coveredDates = new Set(
+    allRems.flatMap(r => r.covers_dates && r.covers_dates.length ? r.covers_dates : [r.date])
+  );
   const dateRows = Object.values(
     allPays.reduce((acc, p) => {
       const d = p.date || TODAY;
@@ -240,16 +239,31 @@ function MgrSend({ filterP, fmtC, branch }) {
     }, {})
   ).map(row => {
     const dayExp = db.expenses.filter(e => e.branch === b && e.date === row.date && e.source !== 'pos').reduce((s, e) => s + e.amount, 0);
-    const dayPaid = allRems.filter(r => r.date === row.date).reduce((s, r) => s + r.amount, 0);
     const net = Math.max(0, row.cash - dayExp);
-    const owe = Math.max(0, net - dayPaid);
-    return { date: row.date, net, paid: dayPaid, owe };
+    const owe = coveredDates.has(row.date) ? 0 : net;
+    return { date: row.date, net, owe };
   }).filter(row => row.date !== TODAY && row.owe > 0).sort((a, b) => a.date.localeCompare(b.date));
+  const allOutstanding = dateRows.reduce((s, r) => s + r.owe, 0);
+  const [selectedDates, setSelectedDates] = useState(new Set());
   const [fields, setFields] = useState({ amount: '', bank: '', account: '', txID: '' });
   const [receipt, setReceipt] = useState(null);
   const [receiptPreview, setReceiptPreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef();
+
+  function toggleDate(date) {
+    setSelectedDates(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date); else next.add(date);
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    const total = dateRows.filter(r => selectedDates.has(r.date)).reduce((s, r) => s + r.owe, 0);
+    if (selectedDates.size > 0) setFields(f => ({ ...f, amount: String(total) }));
+    else setFields(f => ({ ...f, amount: '' }));
+  }, [selectedDates]);
 
   function pickReceipt(e) {
     const file = e.target.files[0];
@@ -283,9 +297,10 @@ function MgrSend({ filterP, fmtC, branch }) {
     }
     setDb(prev => ({
       ...prev,
-      remittances: [...prev.remittances, { id: Date.now(), branch: b, amount, txID: fields.txID, date: txDate, bank: fields.bank, account: fields.account, verified: false, receiptUrl }],
+      remittances: [...prev.remittances, { id: Date.now(), branch: b, amount, txID: fields.txID, date: txDate, bank: fields.bank, account: fields.account, verified: false, receiptUrl, covers_dates: [...selectedDates] }],
     }));
     setFields({ amount: '', bank: '', account: '', txID: '' });
+    setSelectedDates(new Set());
     clearReceipt();
     setSubmitting(false);
   }
@@ -296,39 +311,34 @@ function MgrSend({ filterP, fmtC, branch }) {
     <>
       <div className="pg-hd"><p className="pg-title">Send to Boss</p><p className="pg-sub">Cash (after expenses) goes to boss. POS is already direct.</p></div>
       <div className="pg-body">
-        {allOutstanding > 0 && dateRows.length > 0 && (
+        {dateRows.length > 0 && (
           <div style={{ background: '#fff5f5', border: '1.5px solid #fecaca', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ fontSize: 18 }}>⚠️</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 18 }}>📅</span>
               <div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#e0425a' }}>Outstanding from past days — {fmtC(allOutstanding)} total</p>
-                <p style={{ fontSize: 11, color: '#be123c', marginTop: 2 }}>These days still have uncovered cash</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#e0425a' }}>Select the days you are paying for</p>
+                <p style={{ fontSize: 11, color: '#be123c', marginTop: 2 }}>{fmtC(allOutstanding)} total outstanding from past days</p>
               </div>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #fecaca' }}>
-                  <th style={{ textAlign: 'left', padding: '4px 8px', color: '#be123c', fontWeight: 700 }}>Date</th>
-                  <th style={{ textAlign: 'right', padding: '4px 8px', color: '#be123c', fontWeight: 700 }}>Net Due</th>
-                  <th style={{ textAlign: 'right', padding: '4px 8px', color: '#be123c', fontWeight: 700 }}>Paid</th>
-                  <th style={{ textAlign: 'right', padding: '4px 8px', color: '#be123c', fontWeight: 700 }}>Owe</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dateRows.map(row => (
-                  <tr key={row.date} style={{ borderBottom: '1px solid #fee2e2' }}>
-                    <td style={{ padding: '6px 8px' }}>
-                      <button onClick={() => jumpToDate(row.date)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 700, color: '#e0425a', fontSize: 12, textDecoration: 'underline', fontFamily: 'inherit' }}>
-                        {row.date} →
-                      </button>
-                    </td>
-                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#3a4267' }}>{fmtC(row.net)}</td>
-                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#1fa67a', fontWeight: 600 }}>{row.paid > 0 ? fmtC(row.paid) : '—'}</td>
-                    <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, color: '#e0425a' }}>{fmtC(row.owe)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {dateRows.map(row => {
+                const checked = selectedDates.has(row.date);
+                return (
+                  <label key={row.date} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 9, background: checked ? '#ffe4e6' : '#fff', border: `1.5px solid ${checked ? '#f87171' : '#fecaca'}`, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={checked} onChange={() => toggleDate(row.date)} style={{ width: 16, height: 16, accentColor: '#e0425a', flexShrink: 0 }} />
+                    <span style={{ fontWeight: 700, fontSize: 13, flex: 1 }}>{row.date}</span>
+                    <span style={{ fontSize: 11, color: '#5b6385' }}>Net: {fmtC(row.net)}</span>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: '#e0425a' }}>{fmtC(row.owe)}</span>
+                  </label>
+                );
+              })}
+            </div>
+            {selectedDates.size > 0 && (
+              <div style={{ marginTop: 10, padding: '8px 12px', background: '#fee2e2', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#be123c' }}>{selectedDates.size} day{selectedDates.size !== 1 ? 's' : ''} selected</span>
+                <span style={{ fontWeight: 700, color: '#e0425a', fontFamily: 'monospace' }}>{fmtC(dateRows.filter(r => selectedDates.has(r.date)).reduce((s, r) => s + r.owe, 0))}</span>
+              </div>
+            )}
           </div>
         )}
         <DateFilter />

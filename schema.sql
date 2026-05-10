@@ -56,7 +56,10 @@ create table if not exists remittances (
   tx_id text,
   date text,
   bank text,
-  account text
+  account text,
+  verified boolean default false,
+  receipt_url text,
+  covers_dates text[] default '{}'
 );
 
 create table if not exists delivery_fees (

@@ -125,7 +125,7 @@ export function buildUsers(cfg) {
   cfg.branches.forEach(b => {
     const bl = b.toLowerCase();
     u.push({ username: `${bl}_manager`, password: creds[`manager-${b}`] ?? `${bl}mgr2025`, role: 'manager', branch: b, display: `${b} Manager` });
-    u.push({ username: `${bl}_rider`, password: creds[`rider-${b}`] ?? `${bl}rider2025`, role: 'rider-manager', branch: b, display: `${b} Rider Mgr` });
+    u.push({ username: `${bl}_ops`, password: creds[`ops-${b}`] ?? `${bl}ops2025`, role: 'operation-support', branch: b, display: `${b} Operation Support` });
     u.push({ username: `${bl}_inv`, password: creds[`inventory-${b}`] ?? `${bl}inv2025`, role: 'inventory', branch: b, display: `${b} Inventory` });
   });
   u.push({ username: 'inv_admin', password: creds['inventory-admin'] ?? 'invaadmin2025', role: 'inventory-admin', branch: null, display: 'Inventory Admin' });
@@ -156,8 +156,8 @@ export function getTabs(role) {
   if (role === 'manager') return [
     { id: 'remittance', l: 'Remittance' }, { id: 'send', l: 'Send to Boss' }, { id: 'expenses', l: 'Expenses' }, { id: 'riders', l: 'Riders' }, { id: 'loans', l: 'Staff Loans' },
   ];
-  if (role === 'rider-manager') return [
-    { id: 'log', l: 'Log Orders' }, { id: 'assign', l: 'Assign' }, { id: 'update', l: 'Update' }, { id: 'my-riders', l: 'My Riders' },
+  if (role === 'operation-support') return [
+    { id: 'log', l: 'Log Orders' },
   ];
   if (role === 'delivery-coordinator') return [
     { id: 'log', l: 'Log Orders' }, { id: 'assign', l: 'Assign' }, { id: 'update', l: 'Update' }, { id: 'my-riders', l: 'My Riders' },

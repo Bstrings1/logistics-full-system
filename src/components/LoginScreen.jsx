@@ -156,7 +156,7 @@ const CSS = `
 
 const ROLE_OPTIONS = [
   { value: 'manager', label: 'Branch Manager', needsBranch: true },
-  { value: 'rider-manager', label: 'Rider Manager', needsBranch: true },
+  { value: 'operation-support', label: 'Operation Support', needsBranch: true },
   { value: 'delivery-coordinator', label: 'Delivery Coordinator', needsBranch: false },
   { value: 'inventory', label: 'Inventory Manager', needsBranch: true },
   { value: 'inventory-admin', label: 'Inventory Admin', needsBranch: false },
