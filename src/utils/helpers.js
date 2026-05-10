@@ -160,7 +160,7 @@ export function getTabs(role) {
     { id: 'log', l: 'Log Orders' },
   ];
   if (role === 'delivery-coordinator') return [
-    { id: 'log', l: 'Log Orders' }, { id: 'assign', l: 'Assign' }, { id: 'update', l: 'Update' }, { id: 'my-riders', l: 'My Riders' },
+    { id: 'assign', l: 'Assign' }, { id: 'update', l: 'Update' }, { id: 'my-riders', l: 'My Riders' },
   ];
   if (role === 'vendor') return [
     { id: 'deliveries', l: 'Deliveries' }, { id: 'delivered', l: 'Delivered' },

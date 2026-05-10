@@ -1435,12 +1435,11 @@ function ViewAsSection({ cfg, setViewAs, setActiveTab }) {
 
 function AdminDeliveryCoordinator() {
   const SUB_TABS = [
-    { id: 'log', label: 'Log Orders' },
     { id: 'assign', label: 'Assign' },
     { id: 'update', label: 'Update' },
     { id: 'my-riders', label: 'My Riders' },
   ];
-  const [sub, setSub] = useState('log');
+  const [sub, setSub] = useState('assign');
   return (
     <div>
       <SectionTitle title="Delivery Coordinator" sub="View and manage delivery coordinator activity across all branches" />
