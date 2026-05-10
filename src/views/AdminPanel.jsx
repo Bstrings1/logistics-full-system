@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { gp, fmt, otFull, statusBadgeType, buildUsers, getTabs } from '../utils/helpers';
 import { SBadge } from '../components/ui';
+import { DeliveryCoordinatorViews } from './RiderManagerViews';
 
 const THEME_COLORS = [
   { name: 'Indigo', color: '#635bff' },
@@ -16,6 +17,7 @@ const THEME_COLORS = [
 const TABS = [
   { id: 'viewas', label: '👁 View As Role' },
   { id: 'orders', label: '📋 All Orders' },
+  { id: 'delivery-coordinator', label: '🚚 Delivery Coordinator' },
   { id: 'payments', label: '💳 Rider Payments' },
   { id: 'remittances', label: '💸 Send to Boss' },
   { id: 'inventory', label: '📦 Inventory' },
@@ -120,6 +122,7 @@ export default function AdminPanel() {
         <div style={{ flex: 1, overflowY: 'auto', padding: mobile ? 16 : 32, maxHeight: 'calc(100vh - 52px)', minWidth: 0 }}>
           {tab === 'viewas'      && <ViewAsSection cfg={cfg} setViewAs={setViewAs} setActiveTab={setActiveTab} />}
           {tab === 'orders'      && <OrdersSection       cfg={cfg} db={db} setDb={setDb} />}
+          {tab === 'delivery-coordinator' && <AdminDeliveryCoordinator />}
           {tab === 'payments'    && <PaymentsSection    cfg={cfg} db={db} setDb={setDb} />}
           {tab === 'remittances' && <RemittancesSection cfg={cfg} db={db} setDb={setDb} />}
           {tab === 'inventory'   && <AdminInventorySection cfg={cfg} db={db} setDb={setDb} />}
@@ -1424,6 +1427,32 @@ function ViewAsSection({ cfg, setViewAs, setActiveTab }) {
           {grouped.vendors.map(u => <RoleCard key={u.username} user={u} />)}
         </AccordionBlock>
       )}
+    </div>
+  );
+}
+
+// ─── Delivery Coordinator ─────────────────────────────────────────────────────
+
+function AdminDeliveryCoordinator() {
+  const SUB_TABS = [
+    { id: 'log', label: 'Log Orders' },
+    { id: 'assign', label: 'Assign' },
+    { id: 'update', label: 'Update' },
+    { id: 'my-riders', label: 'My Riders' },
+  ];
+  const [sub, setSub] = useState('log');
+  return (
+    <div>
+      <SectionTitle title="Delivery Coordinator" sub="View and manage delivery coordinator activity across all branches" />
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        {SUB_TABS.map(t => (
+          <button key={t.id} onClick={() => setSub(t.id)}
+            className={`btn btn-sm ${sub === t.id ? 'btn-primary' : 'btn-outline'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <DeliveryCoordinatorViews tabId={sub} />
     </div>
   );
 }
