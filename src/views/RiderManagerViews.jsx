@@ -432,6 +432,8 @@ function RiderUpdate({ filterP, fmtC, branch }) {
   const [completingAmt, setCompletingAmt] = useState('');
   const [failModal, setFailModal] = useState(null);
   const [failReason, setFailReason] = useState('');
+  const [replacingId, setReplacingId] = useState(null);
+  const [replacingProds, setReplacingProds] = useState([]);
 
   function setStatus(id, status, extra = {}) {
     const by = session.kyneEmail || session.display;
@@ -443,6 +445,40 @@ function RiderUpdate({ filterP, fmtC, branch }) {
         return { ...o, status, ...extra, activity: [...(o.activity || []), entry] };
       }),
     }));
+  }
+
+  function openReplaceModal(order) {
+    setReplacingId(order.id);
+    setReplacingProds(gp(order).map(p => ({ ...p })));
+    setOpenDropdown(null);
+  }
+
+  function confirmReplace() {
+    const by = session.kyneEmail || session.display;
+    setDb(prev => {
+      const origOrder = prev.orders.find(x => String(x.id) === String(replacingId));
+      const inv = JSON.parse(JSON.stringify(prev.inventory));
+      if (origOrder) {
+        gp(origOrder).forEach(p => {
+          const qty = Number(p.qty) || 1;
+          if (!p.vendor || !p.name) return;
+          if (inv[origOrder.branch]?.[p.vendor]?.[p.name]) {
+            inv[origOrder.branch][p.vendor][p.name].delivered = Math.max(0, (inv[origOrder.branch][p.vendor][p.name].delivered || 0) - qty);
+          }
+        });
+      }
+      return {
+        ...prev,
+        inventory: inv,
+        orders: prev.orders.map(o => {
+          if (String(o.id) !== String(replacingId)) return o;
+          const entry = { by, action: 'Updated to Replaced', time: new Date().toISOString() };
+          return { ...o, status: 'Replaced', products: replacingProds, activity: [...(o.activity || []), entry] };
+        }),
+      };
+    });
+    setReplacingId(null);
+    setReplacingProds([]);
   }
 
   function openFailModal(id) {
@@ -584,8 +620,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                     {openDropdown === o.id && (
                       <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1.5px solid var(--border)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.15)', zIndex: 200, minWidth: 140, overflow: 'hidden' }}>
                         <button style={{ display: 'block', width: '100%', padding: '11px 14px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', borderBottom: '1px solid var(--border-soft)', color: '#0d9488', cursor: 'pointer' }} onClick={() => { setEditModalStatus('Completed'); setEditModalOrderId(o.id); setOpenDropdown(null); }}>⊕ Completed</button>
-                        <button style={{ display: 'block', width: '100%', padding: '11px 14px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', borderBottom: '1px solid var(--border-soft)', color: 'var(--red)', cursor: 'pointer' }} onClick={() => openFailModal(o.id)}>✗ Failed</button>
-                        <button style={{ display: 'block', width: '100%', padding: '11px 14px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: 'var(--amber)', cursor: 'pointer' }} onClick={() => { setStatus(o.id, 'Replaced'); setOpenDropdown(null); }}>↩ Replaced</button>
+                        <button style={{ display: 'block', width: '100%', padding: '11px 14px', textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer' }} onClick={() => openFailModal(o.id)}>✗ Failed</button>
                       </div>
                     )}
                   </div>
@@ -603,8 +638,8 @@ function RiderUpdate({ filterP, fmtC, branch }) {
             </p>
             <div className="card" style={{ padding: '4px 0' }}>
               {[...filtDelivered, ...filtCompleted, ...filtReplaced].map((o, i, arr) => (
-                <div key={o.id} style={{ padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div key={o.id} style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border-soft)' : 'none' }}>
+                  <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <p style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.customerName}</p>
                       <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider} · {o.phone}</p>
@@ -614,35 +649,41 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                         <SBadge status={o.status} />
                         <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--green)', whiteSpace: 'nowrap' }}>{fmtC(ot(o))}</p>
                       </div>
-                      {(o.status === 'Delivered' || o.status === 'Completed') && (
+                      {o.status === 'Delivered' && (
                         <button
                           style={{ padding: '5px 10px', background: '#fef3c7', color: '#a16207', border: '1.5px solid #fcd34d', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                          onClick={() => {
-                            const by = session.kyneEmail || session.display;
-                            setDb(prev => {
-                              const inv = JSON.parse(JSON.stringify(prev.inventory));
-                              gp(o).forEach(p => {
-                                const qty = Number(p.qty) || 1;
-                                if (!p.vendor || !p.name) return;
-                                if (inv[o.branch]?.[p.vendor]?.[p.name]) {
-                                  inv[o.branch][p.vendor][p.name].delivered = Math.max(0, (inv[o.branch][p.vendor][p.name].delivered || 0) - qty);
-                                }
-                              });
-                              return {
-                                ...prev,
-                                inventory: inv,
-                                orders: prev.orders.map(x => {
-                                  if (String(x.id) !== String(o.id)) return x;
-                                  const entry = { by, action: 'Updated to Replaced', time: new Date().toISOString() };
-                                  return { ...x, status: 'Replaced', activity: [...(x.activity || []), entry] };
-                                }),
-                              };
-                            });
-                          }}
+                          onClick={() => openReplaceModal(o)}
                         >↩ Replaced</button>
                       )}
                     </div>
                   </div>
+                  {String(replacingId) === String(o.id) && (
+                    <div style={{ margin: '0 14px 14px', background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: 10, padding: '14px' }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#a16207', marginBottom: 10 }}>↩ Confirm Replacement</p>
+                      <p style={{ fontSize: 12, color: 'var(--t3)', marginBottom: 10 }}>Update the product or price if the replacement item is different:</p>
+                      {replacingProds.map((p, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                          <input
+                            className="inp" style={{ flex: 2, fontSize: 12 }}
+                            value={p.name}
+                            onChange={e => setReplacingProds(prev => prev.map((x, i) => i === idx ? { ...x, name: e.target.value } : x))}
+                            placeholder="Product name"
+                          />
+                          <input
+                            className="inp" type="number" style={{ flex: 1, fontSize: 12 }}
+                            value={p.price}
+                            onChange={e => setReplacingProds(prev => prev.map((x, i) => i === idx ? { ...x, price: Number(e.target.value) } : x))}
+                            placeholder="Price"
+                          />
+                          <span style={{ fontSize: 11, color: 'var(--t4)', whiteSpace: 'nowrap' }}>×{p.qty}</span>
+                        </div>
+                      ))}
+                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                        <button className="btn btn-sm" style={{ flex: 1, background: '#a16207', color: '#fff', border: 'none' }} onClick={confirmReplace}>Confirm Replacement</button>
+                        <button className="btn btn-outline btn-sm" onClick={() => { setReplacingId(null); setReplacingProds([]); }}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
