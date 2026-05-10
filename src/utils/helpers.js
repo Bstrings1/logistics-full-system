@@ -149,7 +149,7 @@ export const ICONS = {
 export function getTabs(role) {
   if (role === 'boss') return [
     { id: 'overview', l: 'Overview' }, { id: 'branches', l: 'Branches & Remittances' }, { id: 'orders', l: 'Orders' },
-    { id: 'riders', l: 'Riders' },
+    { id: 'riders', l: 'Riders' }, { id: 'delivery-coordinator', l: 'Delivery Coordinator' },
     { id: 'vendor-pay', l: 'Vendor Payments' }, { id: 'inventory', l: 'Inventory' },
     { id: 'expenses', l: 'Expenses' }, { id: 'tools', l: 'CEO Tools' },
   ];

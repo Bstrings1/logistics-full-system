@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
+import { DeliveryCoordinatorViews } from './RiderManagerViews';
 import { fmt, filterPeriod, branchCalc, getBonusCycleOrders, getCycleAllOrders, calcBonus, bonusRate, ot, gp, REVENUE_STATUSES, TODAY, resolveVendors } from '../utils/helpers';
 import { SBadge, Av } from '../components/ui';
 import DateFilter from '../components/DateFilter';
@@ -258,6 +259,7 @@ export default function BossViews({ tabId }) {
   if (tabId === 'branches')    return <BossBranches     filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'orders')      return <BossOrders       filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'riders')      return <BossRiders       fmtC={fmtC} cfg={cfg} db={db} />;
+  if (tabId === 'delivery-coordinator') return <BossDeliveryCoordinator />;
   if (tabId === 'vendor-pay')  return <BossVendorPay    filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
   if (tabId === 'inventory')   return <BossInventory    cfg={cfg} db={db} />;
   if (tabId === 'expenses')    return <BossExpenses     filterP={filterP} fmtC={fmtC} cfg={cfg} db={db} />;
@@ -1175,6 +1177,33 @@ function PendingRegistrations() {
         </>
       )}
     </>
+  );
+}
+
+function BossDeliveryCoordinator() {
+  const SUB_TABS = [
+    { id: 'log', l: 'Log Orders' },
+    { id: 'assign', l: 'Assign' },
+    { id: 'update', l: 'Update' },
+    { id: 'my-riders', l: 'My Riders' },
+  ];
+  const [sub, setSub] = useState('log');
+  return (
+    <div className="bv">
+      <style>{CSS}</style>
+      <div className="pg-hd"><p className="pg-title">Delivery Coordinator</p></div>
+      <div style={{ display: 'flex', gap: 8, padding: '0 0 16px', flexWrap: 'wrap' }}>
+        {SUB_TABS.map(t => (
+          <button key={t.id} onClick={() => setSub(t.id)}
+            style={{ padding: '6px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: '1.5px solid var(--purple)',
+              background: sub === t.id ? 'var(--purple)' : 'transparent',
+              color: sub === t.id ? '#fff' : 'var(--purple)' }}>
+            {t.l}
+          </button>
+        ))}
+      </div>
+      <DeliveryCoordinatorViews tabId={sub} />
+    </div>
   );
 }
 
