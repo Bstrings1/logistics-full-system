@@ -245,6 +245,8 @@ function MgrSend({ filterP, fmtC, branch }) {
   }).filter(row => row.date !== TODAY && row.owe > 0).sort((a, b) => a.date.localeCompare(b.date));
   const allOutstanding = dateRows.reduce((s, r) => s + r.owe, 0);
   const [selectedDates, setSelectedDates] = useState(new Set());
+  const selectedTotal = dateRows.filter(r => selectedDates.has(r.date)).reduce((s, r) => s + r.owe, 0);
+  const displayRem = selectedDates.size > 0 ? selectedTotal : rem;
   const [fields, setFields] = useState({ amount: '', bank: '', account: '', txID: '' });
   const [receipt, setReceipt] = useState(null);
   const [receiptPreview, setReceiptPreview] = useState(null);
@@ -344,7 +346,10 @@ function MgrSend({ filterP, fmtC, branch }) {
         <DateFilter />
         <div className="navy-hero mb20">
           <div className="mini-grid">
-            <div className="mini-card"><p className="mini-l">Still to Send</p><p className="mini-v" style={{ color: rem > 0 ? '#fca5a5' : '#6ee7b7' }}>{rem === 0 && sent > 0 ? '₦0 ✓' : fmtC(rem)}</p></div>
+            <div className="mini-card">
+              <p className="mini-l">Still to Send{selectedDates.size > 0 ? ` (${selectedDates.size} day${selectedDates.size > 1 ? 's' : ''})` : ''}</p>
+              <p className="mini-v" style={{ color: displayRem > 0 ? '#fca5a5' : '#6ee7b7' }}>{displayRem === 0 && sent > 0 ? '₦0 ✓' : fmtC(displayRem)}</p>
+            </div>
             <div className="mini-card"><p className="mini-l">Cash from Riders</p><p className="mini-v" style={{ color: '#93c5fd' }}>{fmtC(cash)}</p></div>
             <div className="mini-card"><p className="mini-l">Cash Expenses</p><p className="mini-v" style={{ color: '#fca5a5' }}>−{fmtC(cashExp)}</p></div>
             <div className="mini-card">
@@ -356,7 +361,7 @@ function MgrSend({ filterP, fmtC, branch }) {
           <div className="bottom-strip">
             <div className="bs-cell"><p className="bs-l">Net to Send</p><p className="bs-v">{fmtC(netToSend)}</p></div>
             <div className="bs-cell"><p className="bs-l">Already Sent</p><p className="bs-v" style={{ color: '#c4b5fd' }}>{fmtC(sent)}</p></div>
-            <div className="bs-cell"><p className="bs-l">Balance</p><p className="bs-v" style={{ color: rem > 0 ? '#fca5a5' : '#6ee7b7' }}>{rem === 0 && sent > 0 ? '₦0 ✓' : fmtC(rem)}</p></div>
+            <div className="bs-cell"><p className="bs-l">Balance</p><p className="bs-v" style={{ color: displayRem > 0 ? '#fca5a5' : '#6ee7b7' }}>{displayRem === 0 && sent > 0 ? '₦0 ✓' : fmtC(displayRem)}</p></div>
           </div>
         </div>
         <div className="card">
