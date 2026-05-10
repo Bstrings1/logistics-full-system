@@ -44,6 +44,19 @@ export default function EditOrderModal() {
 
     setDb(prev => {
       const inv = JSON.parse(JSON.stringify(prev.inventory));
+
+      // If replacing, reverse the original delivered products back to stock first
+      if (editModalStatus === 'Replaced') {
+        gp(order).forEach(p => {
+          const qty = Number(p.qty) || 1;
+          if (!p.vendor || !p.name) return;
+          if (inv[branch]?.[p.vendor]?.[p.name]) {
+            inv[branch][p.vendor][p.name].delivered = Math.max(0, (inv[branch][p.vendor][p.name].delivered || 0) - qty);
+          }
+        });
+      }
+
+      // Add replacement (or newly delivered) products to stock
       finalProds.forEach(p => {
         const vendor = p.vendor;
         const qty = Number(p.qty) || 1;
