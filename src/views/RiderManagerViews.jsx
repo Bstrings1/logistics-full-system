@@ -609,10 +609,7 @@ function RiderUpdate({ filterP, fmtC, branch }) {
                       <p style={{ fontSize: 11, color: 'var(--t4)', marginTop: 1 }}>{o.rider} · {o.phone}</p>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 8 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-                        <SBadge status={o.status} />
-                        <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--green)', whiteSpace: 'nowrap' }}>{fmtC(ot(o))}</p>
-                      </div>
+                      <p style={{ fontWeight: 700, fontSize: 13, color: 'var(--green)', whiteSpace: 'nowrap' }}>{fmtC(ot(o))}</p>
                       {o.status === 'Delivered' && (
                         <button
                           style={{ padding: '5px 10px', background: '#fef3c7', color: '#a16207', border: '1.5px solid #fcd34d', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
