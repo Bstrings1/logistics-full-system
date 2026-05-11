@@ -79,6 +79,24 @@ function SetPasswordScreen() {
   );
 }
 
+function SyncErrorToast() {
+  const [msg, setMsg] = useState('');
+  useEffect(() => {
+    function handler(e) {
+      setMsg(e.detail || 'A change failed to save. Please refresh and try again.');
+      setTimeout(() => setMsg(''), 6000);
+    }
+    window.addEventListener('kyne-sync-error', handler);
+    return () => window.removeEventListener('kyne-sync-error', handler);
+  }, []);
+  if (!msg) return null;
+  return (
+    <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 99999, background: '#e0425a', color: '#fff', borderRadius: 10, padding: '12px 20px', fontSize: 13, fontWeight: 600, boxShadow: '0 4px 20px rgba(0,0,0,0.25)', maxWidth: 420, textAlign: 'center' }}>
+      ⚠ Save failed — {msg}
+    </div>
+  );
+}
+
 function AppContent() {
   const { session, activeTab, cfg, loading, viewAs, setViewAs } = useApp();
   const primary = cfg.theme?.primary || '#1a56db';
@@ -175,6 +193,7 @@ function AppContent() {
           </div>
         </div>
         <EditOrderModal />
+        <SyncErrorToast />
       </div>
     </>
   );

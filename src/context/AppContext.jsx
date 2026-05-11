@@ -323,7 +323,19 @@ async function syncChanges(prev, next) {
     if (toUpsert.length) ops.push(supabase.from('riders').upsert(toUpsert));
   }
 
-  await Promise.all(ops);
+  const results = await Promise.allSettled(ops);
+  const errors = [];
+  results.forEach(r => {
+    if (r.status === 'rejected') errors.push(r.reason?.message || 'Network error');
+    else if (r.value?.error) errors.push(r.value.error.message);
+  });
+  if (errors.length) {
+    const msgs = errors.join('; ');
+    console.error('DB sync error(s):', msgs);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kyne-sync-error', { detail: msgs }));
+    }
+  }
 }
 
 export function AppProvider({ children }) {
