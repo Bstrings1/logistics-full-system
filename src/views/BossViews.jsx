@@ -1165,6 +1165,7 @@ function PendingRegistrations() {
   const [actionId, setActionId] = useState(null);
 
   const ROLE_LABELS = { manager: 'Branch Manager', 'operation-support': 'Operation Support', 'delivery-coordinator': 'Delivery Coordinator', inventory: 'Inventory Manager', 'inventory-admin': 'Inventory Admin', vendor: 'Vendor' };
+  const ROLE_KEYS = Object.keys(ROLE_LABELS);
 
   useEffect(() => {
     supabase.from('pending_registrations').select('*').order('created_at', { ascending: false })
@@ -1203,6 +1204,24 @@ function PendingRegistrations() {
     alert(`Password reset link sent to ${reg.email}`);
   }
 
+  async function changePendingRole(reg, newRole) {
+    if (newRole === reg.role) return;
+    if (!confirm(`Change role for ${reg.email} to ${ROLE_LABELS[newRole]}?`)) return;
+    const { error } = await supabase.from('pending_registrations').update({ role: newRole }).eq('id', reg.id);
+    if (error) { alert('Error: ' + error.message); return; }
+    setRegs(rs => rs.map(x => x.id === reg.id ? { ...x, role: newRole } : x));
+  }
+
+  async function changeApprovedRole(reg, newRole) {
+    if (newRole === reg.role) return;
+    if (!confirm(`Change role for ${reg.email} to ${ROLE_LABELS[newRole]}?\n\nThe user may need to log out and back in for the change to take effect.`)) return;
+    const { error: pErr } = await supabase.from('pending_registrations').update({ role: newRole }).eq('id', reg.id);
+    if (pErr) { alert('Error: ' + pErr.message); return; }
+    const { error: profErr } = await supabase.from('profiles').update({ role: newRole }).eq('kyne_email', reg.email);
+    if (profErr) { alert('Role saved in registration, but profile update failed: ' + profErr.message); return; }
+    setApproved(a => a.map(x => x.id === reg.id ? { ...x, role: newRole } : x));
+  }
+
   async function revoke(reg) {
     if (!confirm(`Revoke access for ${reg.email}? This will delete their account and they will no longer be able to log in.`)) return;
     setActionId(reg.id);
@@ -1227,7 +1246,16 @@ function PendingRegistrations() {
                 {regs.map(r => (
                   <tr key={r.id}>
                     <td style={{ fontWeight: 700 }}>{r.email}</td>
-                    <td><Pill type="blue">{ROLE_LABELS[r.role] || r.role}</Pill></td>
+                    <td>
+                      <select
+                        value={r.role}
+                        onChange={e => changePendingRole(r, e.target.value)}
+                        style={{ height: 28, fontSize: 12, padding: '0 6px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+                      >
+                        {ROLE_KEYS.map(k => <option key={k} value={k}>{ROLE_LABELS[k]}</option>)}
+                        {!ROLE_KEYS.includes(r.role) && <option value={r.role}>{r.role}</option>}
+                      </select>
+                    </td>
                     <td>{r.branch || r.vendor_name || <span style={{ color: '#858cab' }}>—</span>}</td>
                     <td className="bv-mono" style={{ fontSize: 11 }}>{r.created_at?.slice(0, 10)}</td>
                     <td>
@@ -1253,7 +1281,16 @@ function PendingRegistrations() {
                 {approved.map(r => (
                   <tr key={r.id}>
                     <td style={{ fontWeight: 700 }}>{r.email}</td>
-                    <td><Pill type="g">{ROLE_LABELS[r.role] || r.role}</Pill></td>
+                    <td>
+                      <select
+                        value={r.role}
+                        onChange={e => changeApprovedRole(r, e.target.value)}
+                        style={{ height: 28, fontSize: 12, padding: '0 6px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+                      >
+                        {ROLE_KEYS.map(k => <option key={k} value={k}>{ROLE_LABELS[k]}</option>)}
+                        {!ROLE_KEYS.includes(r.role) && <option value={r.role}>{r.role}</option>}
+                      </select>
+                    </td>
                     <td className="bv-mono" style={{ fontSize: 11 }}>{r.created_at?.slice(0, 10)}</td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
