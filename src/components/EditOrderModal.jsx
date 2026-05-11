@@ -150,6 +150,16 @@ export default function EditOrderModal() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {products.map((p, i) => {
               const vendorProducts = (cfg.products?.[p.vendor] || []);
+              const branch = order.branch;
+
+              function getStock(productName) {
+                const entry = db.inventory[branch]?.[p.vendor]?.[productName];
+                if (!entry) return 0;
+                return (entry.received || 0) - (entry.sentOut || 0) - (entry.delivered || 0);
+              }
+
+              const originalProduct = gp(order)[i]?.name;
+
               return (
                 <div key={p._key} style={{ border: '1.5px solid var(--border)', borderRadius: 10, padding: '10px 12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -170,10 +180,26 @@ export default function EditOrderModal() {
                     </div>
                     <div>
                       <label style={S.lbl}>Product</label>
-                      <select style={S.sel} value={p.name} onChange={e => updateProd(i, 'name', e.target.value)}>
+                      <select
+                        style={{ ...S.sel, borderColor: p.name && getStock(p.name) <= 0 && p.name !== originalProduct ? 'var(--red)' : undefined }}
+                        value={p.name}
+                        onChange={e => updateProd(i, 'name', e.target.value)}
+                      >
                         <option value="">— select product —</option>
-                        {vendorProducts.map(pn => <option key={pn} value={pn}>{pn}</option>)}
+                        {vendorProducts.map(pn => {
+                          const stock = getStock(pn);
+                          const isOriginal = pn === originalProduct;
+                          const oos = stock <= 0 && !isOriginal;
+                          return (
+                            <option key={pn} value={pn} disabled={oos}>
+                              {pn}{oos ? ' — Out of stock' : stock > 0 ? ` (${stock} left)` : ''}
+                            </option>
+                          );
+                        })}
                       </select>
+                      {p.name && getStock(p.name) <= 0 && p.name !== originalProduct && (
+                        <p style={{ fontSize: 10, color: 'var(--red)', marginTop: 3, fontWeight: 600 }}>Out of stock</p>
+                      )}
                     </div>
                   </div>
 
