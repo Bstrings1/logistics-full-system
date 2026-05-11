@@ -130,8 +130,8 @@ export default function EditOrderModal() {
                     <input style={S.inp} value={p.name} onChange={e => updateProd(i, 'name', e.target.value)} />
                   </div>
                   <div>
-                    <label style={S.lbl}>Price</label>
-                    <input style={S.inp} type="number" value={p.price} onChange={e => updateProd(i, 'price', e.target.value)} />
+                    <label style={S.lbl}>Price{editModalStatus === 'Replaced' ? ' (boss approval required to change)' : ''}</label>
+                    <input style={{ ...S.inp, opacity: editModalStatus === 'Replaced' ? 0.5 : 1, background: editModalStatus === 'Replaced' ? '#f1f5f9' : '#fff' }} type="number" value={p.price} disabled={editModalStatus === 'Replaced'} onChange={e => updateProd(i, 'price', e.target.value)} />
                   </div>
                   <div>
                     <label style={S.lbl}>Qty</label>
