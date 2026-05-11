@@ -465,7 +465,7 @@ function WaybillIn() {
       if (!inv['IDIMU'][fields.vendor]) inv['IDIMU'][fields.vendor] = {};
       if (!inv['IDIMU'][fields.vendor][fields.product]) inv['IDIMU'][fields.vendor][fields.product] = { received: 0, delivered: 0 };
       inv['IDIMU'][fields.vendor][fields.product].received += q;
-      const histEntry = { id: Date.now(), type: 'waybill-in', fromBranch: null, toBranch: 'IDIMU', vendor: fields.vendor, product: fields.product, qty: q, date: fields.date, note: fields.note };
+      const histEntry = { id: Date.now() * 1000 + Math.floor(Math.random() * 1000), type: 'waybill-in', fromBranch: null, toBranch: 'IDIMU', vendor: fields.vendor, product: fields.product, qty: q, date: fields.date, note: fields.note };
       return { ...prev, inventory: inv, inventoryHistory: [...prev.inventoryHistory, histEntry] };
     });
     setFields(f => ({ ...f, product: '', qty: '', note: '' }));
@@ -579,7 +579,7 @@ function WaybillOut() {
       if (!inv[fields.branch][fields.vendor]) inv[fields.branch][fields.vendor] = {};
       if (!inv[fields.branch][fields.vendor][fields.product]) inv[fields.branch][fields.vendor][fields.product] = { received: 0, delivered: 0 };
       inv[fields.branch][fields.vendor][fields.product].sentOut = (inv[fields.branch][fields.vendor][fields.product].sentOut || 0) + q;
-      const histEntry = { id: Date.now(), type: 'waybill-out', fromBranch: fields.branch, toBranch: null, vendor: fields.vendor, product: fields.product, qty: q, date: fields.date, note: fields.note || fields.reason };
+      const histEntry = { id: Date.now() * 1000 + Math.floor(Math.random() * 1000), type: 'waybill-out', fromBranch: fields.branch, toBranch: null, vendor: fields.vendor, product: fields.product, qty: q, date: fields.date, note: fields.note || fields.reason };
       return { ...prev, inventory: inv, inventoryHistory: [...prev.inventoryHistory, histEntry] };
     });
     setFields(f => ({ ...f, product: '', qty: '', note: '', reason: '' }));
@@ -666,7 +666,7 @@ function Transfer() {
       });
       inv[fields.fromBranch][fields.vendor][fields.product].sentOut = (inv[fields.fromBranch][fields.vendor][fields.product].sentOut || 0) + q;
       inv[fields.toBranch][fields.vendor][fields.product].received = (inv[fields.toBranch][fields.vendor][fields.product].received || 0) + q;
-      const histEntry = { id: Date.now(), type: 'transfer', fromBranch: fields.fromBranch, toBranch: fields.toBranch, vendor: fields.vendor, product: fields.product, qty: q, date: fields.date, note: fields.note };
+      const histEntry = { id: Date.now() * 1000 + Math.floor(Math.random() * 1000), type: 'transfer', fromBranch: fields.fromBranch, toBranch: fields.toBranch, vendor: fields.vendor, product: fields.product, qty: q, date: fields.date, note: fields.note };
       return { ...prev, inventory: inv, inventoryHistory: [...prev.inventoryHistory, histEntry] };
     });
     setFields(f => ({ ...f, product: '', qty: '', note: '' }));
