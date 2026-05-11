@@ -218,22 +218,28 @@ async function syncChanges(prev, next) {
 
   if (prev.expenses !== next.expenses) {
     const prevIds = new Set(prev.expenses.map(e => e.id));
+    const nextIds = new Set(next.expenses.map(e => e.id));
     const toInsert = next.expenses.filter(e => !prevIds.has(e.id));
+    const toDelete = prev.expenses.filter(e => !nextIds.has(e.id)).map(e => e.id);
     if (toInsert.length) {
       ops.push(supabase.from('expenses').insert(toInsert.map(e => ({
         id: e.id, branch: e.branch, description: e.desc, cat: e.cat, amount: e.amount, date: e.date, source: e.source || 'cash',
       }))));
     }
+    if (toDelete.length) ops.push(supabase.from('expenses').delete().in('id', toDelete));
   }
 
   if (prev.riderExpenses !== next.riderExpenses) {
     const prevIds = new Set(prev.riderExpenses.map(e => e.id));
+    const nextIds = new Set(next.riderExpenses.map(e => e.id));
     const toInsert = next.riderExpenses.filter(e => !prevIds.has(e.id));
+    const toDelete = prev.riderExpenses.filter(e => !nextIds.has(e.id)).map(e => e.id);
     if (toInsert.length) {
       ops.push(supabase.from('rider_expenses').insert(toInsert.map(e => ({
         id: e.id, branch: e.branch, rider: e.rider, amount: e.amount, description: e.desc, date: e.date,
       }))));
     }
+    if (toDelete.length) ops.push(supabase.from('rider_expenses').delete().in('id', toDelete));
   }
 
   if (prev.remittances !== next.remittances) {
@@ -298,12 +304,17 @@ async function syncChanges(prev, next) {
 
   if (prev.inventoryHistory !== next.inventoryHistory) {
     const prevIds = new Set(prev.inventoryHistory.map(h => h.id));
+    const nextIds = new Set(next.inventoryHistory.map(h => h.id));
     const toInsert = next.inventoryHistory.filter(h => !prevIds.has(h.id));
+    const toDelete = prev.inventoryHistory.filter(h => !nextIds.has(h.id)).map(h => h.id);
     if (toInsert.length) {
       ops.push(supabase.from('inventory_history').insert(toInsert.map(h => ({
         id: h.id, type: h.type, from_branch: h.fromBranch || null, to_branch: h.toBranch || null,
         vendor: h.vendor, product: h.product, qty: h.qty, date: h.date, note: h.note || null,
       }))));
+    }
+    if (toDelete.length) {
+      ops.push(supabase.from('inventory_history').delete().in('id', toDelete));
     }
   }
 
