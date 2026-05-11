@@ -744,7 +744,7 @@ function Transfer() {
 
 /* ─── Inventory History ────────────────────────────────────── */
 function InvHistory() {
-  const { cfg, db } = useApp();
+  const { cfg, db, setDb } = useApp();
   const [typeF, setTypeF] = useState('all');
   const [branchF, setBranchF] = useState('all');
   const [vendorF, setVendorF] = useState('all');
@@ -778,6 +778,12 @@ function InvHistory() {
           <h1 className="inv2-page-title">Inventory history</h1>
           <p className="inv2-page-sub">All stock movements — waybills and transfers.</p>
         </div>
+        <button className="inv2-btn" style={{ color: '#e0425a', borderColor: '#fecaca', flexShrink: 0 }} onClick={() => {
+          if (!confirm('Clear all inventory history? This cannot be undone.')) return;
+          setDb(prev => ({ ...prev, inventoryHistory: [] }));
+        }}>
+          Clear History
+        </button>
       </div>
 
       {/* Date period filter */}
