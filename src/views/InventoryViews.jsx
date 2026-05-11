@@ -203,7 +203,7 @@ export default function InventoryViews({ tabId }) {
 
 /* ─── Stock Overview ───────────────────────────────────────── */
 function InvStock({ branch, isAdmin, setActiveTab }) {
-  const { cfg, db } = useApp();
+  const { cfg, db, setDb } = useApp();
   const [sq, setSq] = useState('');
   const [selectedBranch, setSelectedBranch] = useState(branch || cfg.branches[0] || 'IDIMU');
   const [period, setPeriod] = useState('all');
@@ -262,6 +262,22 @@ function InvStock({ branch, isAdmin, setActiveTab }) {
             <button className="inv2-btn primary" onClick={() => setActiveTab('waybill-in')}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
               New waybill
+            </button>
+            <button className="inv2-btn" style={{ color: '#e0425a', borderColor: '#fecaca' }} onClick={() => {
+              if (!confirm('Reset ALL stock counts (received, sent out, delivered) to zero for all branches? This cannot be undone.')) return;
+              setDb(prev => {
+                const inv = JSON.parse(JSON.stringify(prev.inventory));
+                Object.keys(inv).forEach(b => {
+                  Object.keys(inv[b]).forEach(v => {
+                    Object.keys(inv[b][v]).forEach(p => {
+                      inv[b][v][p] = { received: 0, sentOut: 0, delivered: 0 };
+                    });
+                  });
+                });
+                return { ...prev, inventory: inv };
+              });
+            }}>
+              Reset Stock
             </button>
           </div>
         )}
