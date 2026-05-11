@@ -1062,21 +1062,29 @@ function BossInventory({ cfg, db }) {
 
 function PriceChangeRequests() {
   const { db, setDb, session } = useApp();
+  const [approvingId, setApprovingId] = useState(null);
+  const [approvePrice, setApprovePrice] = useState('');
   const pending = db.orders.filter(o => o.priceChangeRequest && o.priceChangeRequest.status === 'pending');
 
-  function approve(order) {
-    const req = order.priceChangeRequest;
-    if (!confirm(`Approve price change to ₦${Number(req.requestedPrice).toLocaleString()} for order by ${order.customerName}?`)) return;
+  function startApprove(order) {
+    setApprovingId(order.id);
+    setApprovePrice(String(order.priceChangeRequest.requestedPrice));
+  }
+
+  function confirmApprove(order) {
+    const finalPrice = Number(approvePrice);
+    if (!approvePrice || isNaN(finalPrice) || finalPrice < 0) { alert('Enter a valid price.'); return; }
     const by = session?.kyneEmail || session?.display || 'Boss';
-    const entry = { by, action: `Approved price change to ₦${Number(req.requestedPrice).toLocaleString()}`, time: new Date().toISOString() };
+    const entry = { by, action: `Approved price change to ₦${finalPrice.toLocaleString()}`, time: new Date().toISOString() };
     setDb(prev => ({
       ...prev,
       orders: prev.orders.map(o =>
         o.id === order.id
-          ? { ...o, paidAmount: Number(req.requestedPrice), priceChangeRequest: { ...req, status: 'approved', resolvedBy: by, resolvedAt: new Date().toISOString() }, activity: [...(o.activity || []), entry] }
+          ? { ...o, paidAmount: finalPrice, priceChangeRequest: { ...o.priceChangeRequest, status: 'approved', approvedPrice: finalPrice, resolvedBy: by, resolvedAt: new Date().toISOString() }, activity: [...(o.activity || []), entry] }
           : o
       ),
     }));
+    setApprovingId(null);
   }
 
   function reject(order) {
@@ -1099,6 +1107,7 @@ function PriceChangeRequests() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
       {pending.map(o => {
         const req = o.priceChangeRequest;
+        const isApproving = approvingId === o.id;
         return (
           <div key={o.id} style={{ background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: 12, padding: '14px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
@@ -1108,19 +1117,38 @@ function PriceChangeRequests() {
               </div>
               <span style={{ fontSize: 11, fontWeight: 700, background: '#fef3c7', color: '#92400e', padding: '3px 10px', borderRadius: 20 }}>Price Change Request</span>
             </div>
-            <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>
+            <div style={{ fontSize: 13, color: '#374151', marginBottom: 4 }}>
               <span style={{ fontWeight: 600 }}>Requested price:</span> ₦{Number(req.requestedPrice).toLocaleString()}
             </div>
-            <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>
+            <div style={{ fontSize: 13, color: '#374151', marginBottom: 4 }}>
               <span style={{ fontWeight: 600 }}>Reason:</span> {req.reason}
             </div>
             <div style={{ fontSize: 11, color: '#858cab', marginBottom: 10 }}>
               Requested by {req.requestedBy} · {req.requestedAt ? new Date(req.requestedAt).toLocaleString() : ''}
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="bv-btn primary" style={{ height: 32, fontSize: 12, padding: '0 16px' }} onClick={() => approve(o)}>Approve</button>
-              <button className="bv-btn" style={{ height: 32, fontSize: 12, padding: '0 14px', color: '#e0425a', borderColor: '#fecaca' }} onClick={() => reject(o)}>Reject</button>
-            </div>
+
+            {isApproving ? (
+              <div style={{ background: '#fff', border: '1.5px solid #fcd34d', borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#92400e', margin: '0 0 8px' }}>Set approved price</p>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    value={approvePrice}
+                    onChange={e => setApprovePrice(e.target.value)}
+                    style={{ flex: 1, border: '1.5px solid #fcd34d', borderRadius: 7, padding: '7px 10px', fontSize: 15, outline: 'none', background: '#fffbeb' }}
+                    placeholder="Enter final price"
+                    autoFocus
+                  />
+                  <button className="bv-btn primary" style={{ height: 34, fontSize: 12, padding: '0 16px', whiteSpace: 'nowrap' }} onClick={() => confirmApprove(o)}>Confirm</button>
+                  <button className="bv-btn" style={{ height: 34, fontSize: 12, padding: '0 12px' }} onClick={() => setApprovingId(null)}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="bv-btn primary" style={{ height: 32, fontSize: 12, padding: '0 16px' }} onClick={() => startApprove(o)}>Approve</button>
+                <button className="bv-btn" style={{ height: 32, fontSize: 12, padding: '0 14px', color: '#e0425a', borderColor: '#fecaca' }} onClick={() => reject(o)}>Reject</button>
+              </div>
+            )}
           </div>
         );
       })}
