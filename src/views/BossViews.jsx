@@ -1214,12 +1214,14 @@ function PendingRegistrations() {
 
   async function changeApprovedRole(reg, newRole) {
     if (newRole === reg.role) return;
-    if (!confirm(`Change role for ${reg.email} to ${ROLE_LABELS[newRole]}?\n\nThe user may need to log out and back in for the change to take effect.`)) return;
+    if (!confirm(`Change role for ${reg.email} to ${ROLE_LABELS[newRole]}?\n\nThe user must log out and back in for the change to take effect.`)) return;
     const { error: pErr } = await supabase.from('pending_registrations').update({ role: newRole }).eq('id', reg.id);
     if (pErr) { alert('Error: ' + pErr.message); return; }
-    const { error: profErr } = await supabase.from('profiles').update({ role: newRole }).eq('kyne_email', reg.email);
-    if (profErr) { alert('Role saved in registration, but profile update failed: ' + profErr.message); return; }
+    const { data: updated, error: rpcErr } = await supabase.rpc('update_role_by_email', { p_email: reg.email, p_role: newRole });
+    if (rpcErr) { alert('Role saved in registration, but profile update failed: ' + rpcErr.message + '\n\nMake sure the update_role_by_email function has been created in Supabase.'); return; }
+    if (updated === 0) { alert('No profile found for ' + reg.email + '. The role was updated in the registration but the user profile could not be found.'); return; }
     setApproved(a => a.map(x => x.id === reg.id ? { ...x, role: newRole } : x));
+    alert(`Role updated. ${reg.email} must log out and back in for the change to take effect.`);
   }
 
   async function revoke(reg) {
