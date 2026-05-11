@@ -195,23 +195,45 @@ export default function LoginScreen() {
 
     setLoginLoading(true);
     setError('');
-    const { data, error: authErr } = await supabase.auth.signInWithPassword({ email: userInput, password: pass });
-    if (authErr) {
-      setError('Incorrect credentials. Please try again.');
+
+    try {
+      const { data, error: authErr } = await supabase.auth.signInWithPassword({ email: userInput, password: pass });
+      if (authErr) {
+        const msg = authErr.message?.toLowerCase() || '';
+        if (msg.includes('invalid') || msg.includes('credentials') || msg.includes('password')) {
+          setError('Incorrect email or password. Please try again.');
+        } else {
+          setError('Connection issue. Please check your internet and try again.');
+        }
+        setShake(true);
+        setTimeout(() => setShake(false), 400);
+        setLoginLoading(false);
+        return;
+      }
+
+      // Retry profile fetch up to 3 times — can fail on slow connections
+      let profile = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { data: p, error: pErr } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+        if (p) { profile = p; break; }
+        if (attempt < 2) await new Promise(r => setTimeout(r, 800));
+      }
+
+      if (!profile) {
+        setError('Could not load your profile. Please try again.');
+        setLoginLoading(false);
+        return;
+      }
+
+      setSession({ role: profile.role, branch: profile.branch || null, vendorName: profile.vendor_name || null, display: profile.username, kyneEmail: profile.kyne_email });
+      const tabs = getTabs(profile.role);
+      if (tabs.length) setActiveTab(tabs[0].id);
+    } catch (e) {
+      setError('Connection issue. Please check your internet and try again.');
       setShake(true);
       setTimeout(() => setShake(false), 400);
-      setLoginLoading(false);
-      return;
     }
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
-    if (!profile) {
-      setError('Account not fully set up. Contact admin.');
-      setLoginLoading(false);
-      return;
-    }
-    setSession({ role: profile.role, branch: profile.branch || null, vendorName: profile.vendor_name || null, display: profile.username, kyneEmail: profile.kyne_email });
-    const tabs = getTabs(profile.role);
-    if (tabs.length) setActiveTab(tabs[0].id);
+
     setLoginLoading(false);
   }
 
