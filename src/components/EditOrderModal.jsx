@@ -11,6 +11,9 @@ export default function EditOrderModal() {
   const { db, setDb, editModalOrderId, setEditModalOrderId, editModalStatus, session } = useApp();
   const [fields, setFields] = useState({ customerName: '', phone: '', address: '' });
   const [products, setProducts] = useState([]);
+  const [priceReqOpen, setPriceReqOpen] = useState(false);
+  const [priceReqPrice, setPriceReqPrice] = useState('');
+  const [priceReqReason, setPriceReqReason] = useState('');
 
   const order = db.orders.find(o => o.id === editModalOrderId);
 
@@ -23,7 +26,23 @@ export default function EditOrderModal() {
 
   if (!editModalOrderId) return null;
 
-  function close() { setEditModalOrderId(null); }
+  function close() { setEditModalOrderId(null); setPriceReqOpen(false); setPriceReqPrice(''); setPriceReqReason(''); }
+
+  function submitPriceRequest() {
+    if (!priceReqPrice || Number(priceReqPrice) < 0) { alert('Enter a valid requested price.'); return; }
+    if (!priceReqReason.trim()) { alert('Please enter a reason for the price change.'); return; }
+    const by = session?.kyneEmail || session?.display || 'Unknown';
+    setDb(prev => ({
+      ...prev,
+      orders: prev.orders.map(o =>
+        o.id === editModalOrderId
+          ? { ...o, priceChangeRequest: { requestedPrice: Number(priceReqPrice), reason: priceReqReason.trim(), requestedBy: by, requestedAt: new Date().toISOString(), status: 'pending' } }
+          : o
+      ),
+    }));
+    alert('Price change request sent to boss for approval.');
+    close();
+  }
 
   function addProd() {
     setProducts(prev => [...prev, { name: '', price: 0, qty: 1, vendor: gp(order)[0]?.vendor || '', _key: Date.now() }]);
@@ -130,7 +149,7 @@ export default function EditOrderModal() {
                     <input style={S.inp} value={p.name} onChange={e => updateProd(i, 'name', e.target.value)} />
                   </div>
                   <div>
-                    <label style={S.lbl}>Price{editModalStatus === 'Replaced' ? ' (boss approval required to change)' : ''}</label>
+                    <label style={S.lbl}>Price{editModalStatus === 'Replaced' ? ' (locked)' : ''}</label>
                     <input style={{ ...S.inp, opacity: editModalStatus === 'Replaced' ? 0.5 : 1, background: editModalStatus === 'Replaced' ? '#f1f5f9' : '#fff' }} type="number" value={p.price} disabled={editModalStatus === 'Replaced'} onChange={e => updateProd(i, 'price', e.target.value)} />
                   </div>
                   <div>
@@ -142,6 +161,39 @@ export default function EditOrderModal() {
             ))}
           </div>
         </div>
+
+        {/* Price change request (Replaced orders only) */}
+        {editModalStatus === 'Replaced' && (
+          <div style={{ padding: '10px 16px', borderTop: '1.5px solid var(--border-soft)', flexShrink: 0, background: '#fafbff' }}>
+            {!priceReqOpen ? (
+              <button
+                className="btn btn-outline btn-sm btn-full"
+                style={{ color: '#b45309', borderColor: '#fcd34d', background: '#fffbeb' }}
+                onClick={() => { setPriceReqOpen(true); setPriceReqPrice(products[0]?.price || ''); }}
+              >
+                Request Price Change (boss approval)
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#b45309', margin: 0 }}>Request Price Change</p>
+                <div className="g2" style={{ gap: 8 }}>
+                  <div>
+                    <label style={S.lbl}>New Price (₦)</label>
+                    <input style={S.inp} type="number" placeholder="Enter new price" value={priceReqPrice} onChange={e => setPriceReqPrice(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={S.lbl}>Reason</label>
+                    <input style={S.inp} placeholder="Why is the price changing?" value={priceReqReason} onChange={e => setPriceReqReason(e.target.value)} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-outline btn-sm" onClick={() => setPriceReqOpen(false)}>Cancel</button>
+                  <button className="btn btn-sm btn-full" style={{ background: '#b45309', color: '#fff', border: 'none' }} onClick={submitPriceRequest}>Send Request to Boss</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Sticky confirm button */}
         <div style={{ padding: '10px 16px 14px', borderTop: '1.5px solid var(--border-soft)', flexShrink: 0 }}>

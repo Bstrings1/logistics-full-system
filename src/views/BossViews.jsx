@@ -1058,6 +1058,76 @@ function BossInventory({ cfg, db }) {
   );
 }
 
+// ─── Price Change Requests ────────────────────────────────────────────────────
+
+function PriceChangeRequests() {
+  const { db, setDb, session } = useApp();
+  const pending = db.orders.filter(o => o.priceChangeRequest && o.priceChangeRequest.status === 'pending');
+
+  function approve(order) {
+    const req = order.priceChangeRequest;
+    if (!confirm(`Approve price change to ₦${Number(req.requestedPrice).toLocaleString()} for order by ${order.customerName}?`)) return;
+    const by = session?.kyneEmail || session?.display || 'Boss';
+    const entry = { by, action: `Approved price change to ₦${Number(req.requestedPrice).toLocaleString()}`, time: new Date().toISOString() };
+    setDb(prev => ({
+      ...prev,
+      orders: prev.orders.map(o =>
+        o.id === order.id
+          ? { ...o, paidAmount: Number(req.requestedPrice), priceChangeRequest: { ...req, status: 'approved', resolvedBy: by, resolvedAt: new Date().toISOString() }, activity: [...(o.activity || []), entry] }
+          : o
+      ),
+    }));
+  }
+
+  function reject(order) {
+    if (!confirm('Reject this price change request?')) return;
+    const by = session?.kyneEmail || session?.display || 'Boss';
+    const entry = { by, action: 'Rejected price change request', time: new Date().toISOString() };
+    setDb(prev => ({
+      ...prev,
+      orders: prev.orders.map(o =>
+        o.id === order.id
+          ? { ...o, priceChangeRequest: { ...o.priceChangeRequest, status: 'rejected', resolvedBy: by, resolvedAt: new Date().toISOString() }, activity: [...(o.activity || []), entry] }
+          : o
+      ),
+    }));
+  }
+
+  if (pending.length === 0) return <div style={{ fontSize: 13, color: '#858cab', padding: '10px 0' }}>No pending price change requests</div>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+      {pending.map(o => {
+        const req = o.priceChangeRequest;
+        return (
+          <div key={o.id} style={{ background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: 12, padding: '14px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 14, margin: 0 }}>{o.customerName}</p>
+                <p style={{ fontSize: 11, color: '#5b6385', margin: '2px 0 0' }}>{o.branch} · {o.date} · Rider: {o.rider || '—'}</p>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, background: '#fef3c7', color: '#92400e', padding: '3px 10px', borderRadius: 20 }}>Price Change Request</span>
+            </div>
+            <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>
+              <span style={{ fontWeight: 600 }}>Requested price:</span> ₦{Number(req.requestedPrice).toLocaleString()}
+            </div>
+            <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>
+              <span style={{ fontWeight: 600 }}>Reason:</span> {req.reason}
+            </div>
+            <div style={{ fontSize: 11, color: '#858cab', marginBottom: 10 }}>
+              Requested by {req.requestedBy} · {req.requestedAt ? new Date(req.requestedAt).toLocaleString() : ''}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="bv-btn primary" style={{ height: 32, fontSize: 12, padding: '0 16px' }} onClick={() => approve(o)}>Approve</button>
+              <button className="bv-btn" style={{ height: 32, fontSize: 12, padding: '0 14px', color: '#e0425a', borderColor: '#fecaca' }} onClick={() => reject(o)}>Reject</button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── CEO Tools ────────────────────────────────────────────────────────────────
 
 function PendingRegistrations() {
@@ -1195,6 +1265,10 @@ function BossTools({ setActiveTab, cfg }) {
             <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 5 }}>Staff Loans</div>
             <div style={{ fontSize: 12, color: '#5b6385' }}>Track loans and repayments</div>
           </div>
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#858cab', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8 }}>Price Change Requests</div>
+          <PriceChangeRequests />
         </div>
         <div style={{ marginTop: 16 }}>
           <PendingRegistrations />
