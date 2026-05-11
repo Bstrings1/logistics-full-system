@@ -5,10 +5,11 @@ import { gp } from '../utils/helpers';
 const S = {
   lbl: { fontSize: 11, fontWeight: 600, color: 'var(--t2)', marginBottom: 3, display: 'block' },
   inp: { width: '100%', border: '1.5px solid var(--border)', borderRadius: 8, padding: '8px 10px', fontSize: 16, outline: 'none', background: '#fff', color: 'var(--text)', boxSizing: 'border-box' },
+  sel: { width: '100%', border: '1.5px solid var(--border)', borderRadius: 8, padding: '8px 10px', fontSize: 15, outline: 'none', background: '#fff', color: 'var(--text)', boxSizing: 'border-box', cursor: 'pointer' },
 };
 
 export default function EditOrderModal() {
-  const { db, setDb, editModalOrderId, setEditModalOrderId, editModalStatus, session } = useApp();
+  const { cfg, db, setDb, editModalOrderId, setEditModalOrderId, editModalStatus, session } = useApp();
   const [fields, setFields] = useState({ customerName: '', phone: '', address: '' });
   const [products, setProducts] = useState([]);
   const [priceReqOpen, setPriceReqOpen] = useState(false);
@@ -45,11 +46,16 @@ export default function EditOrderModal() {
   }
 
   function addProd() {
-    setProducts(prev => [...prev, { name: '', price: 0, qty: 1, vendor: gp(order)[0]?.vendor || '', _key: Date.now() }]);
+    const defaultVendor = gp(order)[0]?.vendor || cfg.vendors[0] || '';
+    setProducts(prev => [...prev, { name: '', price: 0, qty: 1, vendor: defaultVendor, _key: Date.now() }]);
   }
 
   function updateProd(idx, field, value) {
-    setProducts(prev => prev.map((p, i) => i === idx ? { ...p, [field]: value } : p));
+    setProducts(prev => prev.map((p, i) => {
+      if (i !== idx) return p;
+      if (field === 'vendor') return { ...p, vendor: value, name: '' };
+      return { ...p, [field]: value };
+    }));
   }
 
   function confirmDelivered() {
@@ -102,6 +108,8 @@ export default function EditOrderModal() {
     close();
   }
 
+  const isReplaced = editModalStatus === 'Replaced';
+
   return (
     <div className="modal-bg open">
       <div className="modal-box" style={{ padding: 0, display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}>
@@ -140,30 +148,58 @@ export default function EditOrderModal() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {products.map((p, i) => (
-              <div key={p._key} style={{ border: '1.5px solid var(--border)', borderRadius: 10, padding: '10px 12px' }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', marginBottom: 8 }}>Product {i + 1}</p>
-                <div className="g3" style={{ gap: 8 }}>
-                  <div>
-                    <label style={S.lbl}>Name</label>
-                    <input style={S.inp} value={p.name} onChange={e => updateProd(i, 'name', e.target.value)} />
+            {products.map((p, i) => {
+              const vendorProducts = (cfg.products?.[p.vendor] || []);
+              return (
+                <div key={p._key} style={{ border: '1.5px solid var(--border)', borderRadius: 10, padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--t3)', margin: 0 }}>Product {i + 1}</p>
+                    {products.length > 1 && (
+                      <button className="btn btn-outline btn-xs" style={{ color: 'var(--red)', borderColor: 'var(--red-bd)', fontSize: 11 }}
+                        onClick={() => setProducts(prev => prev.filter((_, idx) => idx !== i))}>Remove</button>
+                    )}
                   </div>
-                  <div>
-                    <label style={S.lbl}>Price{editModalStatus === 'Replaced' ? ' (locked)' : ''}</label>
-                    <input style={{ ...S.inp, opacity: editModalStatus === 'Replaced' ? 0.5 : 1, background: editModalStatus === 'Replaced' ? '#f1f5f9' : '#fff' }} type="number" value={p.price} disabled={editModalStatus === 'Replaced'} onChange={e => updateProd(i, 'price', e.target.value)} />
+
+                  {/* Vendor + Product row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                    <div>
+                      <label style={S.lbl}>Vendor</label>
+                      <select style={S.sel} value={p.vendor} onChange={e => updateProd(i, 'vendor', e.target.value)}>
+                        {cfg.vendors.map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={S.lbl}>Product</label>
+                      <select style={S.sel} value={p.name} onChange={e => updateProd(i, 'name', e.target.value)}>
+                        <option value="">— select product —</option>
+                        {vendorProducts.map(pn => <option key={pn} value={pn}>{pn}</option>)}
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label style={S.lbl}>Qty</label>
-                    <input style={S.inp} type="number" value={p.qty} onChange={e => updateProd(i, 'qty', e.target.value)} />
+
+                  {/* Price + Qty row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <div>
+                      <label style={S.lbl}>Price{isReplaced ? ' (locked)' : ''}</label>
+                      <input
+                        style={{ ...S.inp, opacity: isReplaced ? 0.5 : 1, background: isReplaced ? '#f1f5f9' : '#fff' }}
+                        type="number" value={p.price} disabled={isReplaced}
+                        onChange={e => updateProd(i, 'price', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label style={S.lbl}>Qty</label>
+                      <input style={S.inp} type="number" value={p.qty} onChange={e => updateProd(i, 'qty', e.target.value)} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         {/* Price change request (Replaced orders only) */}
-        {editModalStatus === 'Replaced' && (
+        {isReplaced && (
           <div style={{ padding: '10px 16px', borderTop: '1.5px solid var(--border-soft)', flexShrink: 0, background: '#fafbff' }}>
             {!priceReqOpen ? (
               <button
