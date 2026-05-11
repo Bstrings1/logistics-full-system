@@ -1162,19 +1162,36 @@ function PendingRegistrations() {
   const [regs, setRegs] = useState([]);
   const [approved, setApproved] = useState([]);
   const [loadingRegs, setLoadingRegs] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [actionId, setActionId] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const ROLE_LABELS = { manager: 'Branch Manager', 'operation-support': 'Operation Support', 'delivery-coordinator': 'Delivery Coordinator', inventory: 'Inventory Manager', 'inventory-admin': 'Inventory Admin', vendor: 'Vendor' };
   const ROLE_KEYS = Object.keys(ROLE_LABELS);
 
   useEffect(() => {
+    let cancelled = false;
+    setLoadingRegs(true);
+    setLoadError('');
     supabase.from('pending_registrations').select('*').order('created_at', { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          setLoadError(error.message || 'Could not load registrations');
+          setLoadingRegs(false);
+          return;
+        }
         setRegs((data || []).filter(r => r.status === 'pending'));
         setApproved((data || []).filter(r => r.status === 'approved'));
         setLoadingRegs(false);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        setLoadError(err?.message || 'Network error — could not reach Supabase');
+        setLoadingRegs(false);
       });
-  }, []);
+    return () => { cancelled = true; };
+  }, [reloadKey]);
 
   async function approve(reg) {
     if (!confirm(`Approve ${reg.email} as ${ROLE_LABELS[reg.role] || reg.role}?`)) return;
@@ -1235,6 +1252,14 @@ function PendingRegistrations() {
   }
 
   if (loadingRegs) return <div style={{ padding: 16, color: '#858cab', fontSize: 13 }}>Loading…</div>;
+
+  if (loadError) return (
+    <div style={{ padding: 14, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#991b1b', fontSize: 13 }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>⚠ Could not load registrations</div>
+      <div style={{ fontSize: 12, marginBottom: 10 }}>{loadError}</div>
+      <button className="bv-btn" style={{ height: 28, fontSize: 12, padding: '0 10px' }} onClick={() => setReloadKey(k => k + 1)}>Retry</button>
+    </div>
+  );
 
   return (
     <>
